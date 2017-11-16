@@ -14027,9 +14027,11 @@
   background-image:url('../../resources/images/transparent.gif');
 }
 #u2847 {
-  position:absolute;
-  left:436px;
-  top:2117px;
+  position:fixed;
+  left:50%;
+  margin-left:-245px;
+  top:50%;
+  margin-top:-216px;
   visibility:hidden;
 }
 #u2847_state0 {
