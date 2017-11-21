@@ -1,5 +1,5 @@
 ﻿.ax_default {
-  font-family:'ArialMT', 'Arial';
+  font-family:'Arial Normal', 'Arial';
   font-weight:400;
   font-style:normal;
   font-size:13px;
@@ -14,42 +14,44 @@
 ._图片 {
   color:#000000;
 }
+.placeholder {
+}
 ._一级标题 {
-  font-family:'Arial-BoldMT', 'Arial Bold', 'Arial';
+  font-family:'Arial Negreta', 'Arial Normal', 'Arial';
   font-weight:700;
   font-style:normal;
   font-size:32px;
   text-align:left;
 }
 ._二级标题 {
-  font-family:'Arial-BoldMT', 'Arial Bold', 'Arial';
+  font-family:'Arial Negreta', 'Arial Normal', 'Arial';
   font-weight:700;
   font-style:normal;
   font-size:24px;
   text-align:left;
 }
 ._三级标题 {
-  font-family:'Arial-BoldMT', 'Arial Bold', 'Arial';
+  font-family:'Arial Negreta', 'Arial Normal', 'Arial';
   font-weight:700;
   font-style:normal;
   font-size:18px;
   text-align:left;
 }
 ._四级标题 {
-  font-family:'Arial-BoldMT', 'Arial Bold', 'Arial';
+  font-family:'Arial Negreta', 'Arial Normal', 'Arial';
   font-weight:700;
   font-style:normal;
   font-size:14px;
   text-align:left;
 }
 ._五级标题 {
-  font-family:'Arial-BoldMT', 'Arial Bold', 'Arial';
+  font-family:'Arial Negreta', 'Arial Normal', 'Arial';
   font-weight:700;
   font-style:normal;
   text-align:left;
 }
 ._六级标题 {
-  font-family:'Arial-BoldMT', 'Arial Bold', 'Arial';
+  font-family:'Arial Negreta', 'Arial Normal', 'Arial';
   font-weight:700;
   font-style:normal;
   font-size:10px;
@@ -57,6 +59,8 @@
 }
 ._文本段落 {
   text-align:left;
+}
+.line {
 }
 ._文本框 {
   color:#000000;
@@ -83,4 +87,23 @@
 ._垂直线 {
 }
 ._连接线 {
+}
+.box_1 {
+}
+._图片1 {
+  color:#000000;
+}
+._形状1 {
+}
+._水平线1 {
+}
+._文本段落1 {
+  text-align:left;
+}
+.sticky_2 {
+  text-align:left;
+}
+.icon {
+}
+.ellipse {
 }
