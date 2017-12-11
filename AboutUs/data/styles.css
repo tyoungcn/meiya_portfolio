@@ -59,6 +59,15 @@
 .paragraph {
   text-align:left;
 }
+._连接线 {
+  font-family:'黑体';
+  font-weight:400;
+  font-style:normal;
+  font-size:13px;
+  color:#333333;
+  text-align:center;
+  line-height:normal;
+}
 .line {
 }
 .connector {
@@ -70,7 +79,24 @@
   text-align:center;
   line-height:normal;
 }
+.sticky_1 {
+  text-align:left;
+}
+.marker {
+  color:#FFFFFF;
+}
 .image {
 }
 .placeholder {
+}
+.icon {
+}
+._形状 {
+}
+._图片 {
+  color:#000000;
+}
+._水平线 {
+}
+._垂直线 {
 }
