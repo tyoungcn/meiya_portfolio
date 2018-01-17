@@ -58,7 +58,7 @@
 ._流程形状 {
 }
 ._连接线 {
-  font-family:'黑体';
+  font-family:'黑体 Bold', '黑体';
   font-weight:700;
   font-style:normal;
   font-size:13px;
@@ -70,6 +70,13 @@
   text-align:left;
 }
 ._形状 {
+  font-family:'ArialMT', 'Arial';
+  font-weight:400;
+  font-style:normal;
+  font-size:13px;
+  color:#CCCCCC;
+  text-align:center;
+  line-height:normal;
 }
 ._图片 {
   color:#000000;
