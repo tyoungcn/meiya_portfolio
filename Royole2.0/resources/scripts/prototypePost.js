@@ -1,4 +1,4 @@
-﻿// 8.0.0.3355. Generated 8/24/2017 4:38:58 AM UTC
+﻿// 8.0.0.3338. Generated 4/28/2017 12:22:57 AM UTC
 
 //***** messagecenter.js *****//
 if (typeof console == 'undefined') console = {
@@ -675,21 +675,6 @@ $axure.internal(function($ax) {
 
     };
 
-    var _handleScrollEvent = function (elementId, eventInfo, originalEvent, scrolledUp, scrolledDown, interactionMap, skipShowDescription, synthetic) {
-        if (!interactionMap) return;
-        if (interactionMap.onScroll) _handleEvent(elementId, eventInfo, interactionMap.onScroll, skipShowDescription, synthetic);
-
-        var wasHandled = originalEvent.handled;
-        if (interactionMap.onScrollUp && scrolledUp) {
-            originalEvent.handled = false;
-            _handleEvent(elementId, eventInfo, interactionMap.onScrollUp, skipShowDescription, synthetic);
-        } else if (interactionMap.onScrollDown && scrolledDown) {
-            originalEvent.handled = false;
-            _handleEvent(elementId, eventInfo, interactionMap.onScrollDown, skipShowDescription, synthetic);
-        }
-        originalEvent.handled |= wasHandled;
-    }
-
     var _showCaseDescriptions = function(elementId, eventInfo, axEventObject, synthetic) {
 
         if(axEventObject.cases.length == 0) return true;
@@ -1256,12 +1241,19 @@ $axure.internal(function($ax) {
                         _attachDefaultObjectEvent($('#' + id), elementId, 'scroll', function(e) {
                             $ax.setjBrowserEvent(e);
                             var currentEvent = $ax.getjBrowserEvent();
-                            var eventInfoFromEvent = $ax.getEventInfoFromEvent(currentEvent, false, elementId);
-
+                            var eventInfoFromEvent = $ax.getEventInfoFromEvent($ax.getjBrowserEvent(), false, elementId);
+                            if(map.onScroll) _handleEvent(elementId, eventInfoFromEvent, map.onScroll);
+                            
                             var currentTop = $('#' + id).scrollTop();
-                            var lastTop = $('#' + id).data('lastScrollTop');
-
-                            _handleScrollEvent(elementId, eventInfoFromEvent, currentEvent.originalEvent, currentTop < lastTop, currentTop > lastTop, map);
+                            var wasHandled = currentEvent.originalEvent.handled;
+                            if (map.onScrollUp && currentTop < $('#' + id).data('lastScrollTop')) {
+                                currentEvent.originalEvent.handled = false;
+                                _handleEvent(elementId, eventInfoFromEvent, map.onScrollUp);
+                            } else if (map.onScrollDown && currentTop > $('#' + id).data('lastScrollTop')) {
+                                currentEvent.originalEvent.handled = false;
+                                _handleEvent(elementId, eventInfoFromEvent, map.onScrollDown);
+                            }
+                            currentEvent.originalEvent.handled |= wasHandled;
                             $('#' + id).data('lastScrollTop', currentTop);
                         });
                     })(panelId);
@@ -1366,50 +1358,50 @@ $axure.internal(function($ax) {
             //attach link alternate styles
             if(dObj.type == 'hyperlink') {
                 $element.mouseenter(function() {
-                    var linkId = this.id;
-                    if(_event.mouseOverIds.indexOf(linkId) != -1) return true;
-                    _event.mouseOverIds[_event.mouseOverIds.length] = linkId;
+                    var elementId = this.id;
+                    if(_event.mouseOverIds.indexOf(elementId) != -1) return true;
+                    _event.mouseOverIds[_event.mouseOverIds.length] = elementId;
                     var mouseOverObjectId = _event.mouseOverObjectId;
                     if(mouseOverObjectId && $ax.style.IsWidgetDisabled(mouseOverObjectId)) return true;
 
-                    $ax.style.SetLinkHover(linkId);
+                    $ax.style.SetLinkHover(elementId);
 
-                    var bubble = _fireObjectEvent(linkId, 'mouseenter', arguments);
+                    var bubble = _fireObjectEvent(elementId, 'mouseenter', arguments);
 
-                    $ax.annotation.updateLinkLocations($ax.GetParentIdFromLink(linkId));
+                    $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromLink(elementId));
                     return bubble;
                 }).mouseleave(function() {
-                    var linkId = this.id;
-                    $ax.splice(_event.mouseOverIds, _event.mouseOverIds.indexOf(linkId), 1);
+                    var elementId = this.id;
+                    $ax.splice(_event.mouseOverIds, _event.mouseOverIds.indexOf(elementId), 1);
                     var mouseOverObjectId = _event.mouseOverObjectId;
                     if(mouseOverObjectId && $ax.style.IsWidgetDisabled(mouseOverObjectId)) return true;
 
-                    $ax.style.SetLinkNotHover(linkId);
+                    $ax.style.SetLinkNotHover(elementId);
 
-                    var bubble = _fireObjectEvent(linkId, 'mouseleave', arguments);
+                    var bubble = _fireObjectEvent(elementId, 'mouseleave', arguments);
 
-                    $ax.annotation.updateLinkLocations($ax.GetParentIdFromLink(linkId));
+                    $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromLink(elementId));
                     return bubble;
                 }).bind($ax.features.eventNames.mouseDownName, function() {
-                    var linkId = this.id;
+                    var elementId = this.id;
                     var mouseOverObjectId = _event.mouseOverObjectId;
                     if($ax.style.IsWidgetDisabled(mouseOverObjectId)) return undefined;
 
                     if(mouseOverObjectId) $ax.style.SetWidgetMouseDown(mouseOverObjectId, true);
-                    $ax.style.SetLinkMouseDown(linkId);
+                    $ax.style.SetLinkMouseDown(elementId);
 
-                    $ax.annotation.updateLinkLocations($ax.GetParentIdFromLink(linkId));
+                    $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromLink(elementId));
 
                     return false;
                 }).bind($ax.features.eventNames.mouseUpName, function() {
-                    var linkId = this.id;
+                    var elementId = this.id;
                     var mouseOverObjectId = _event.mouseOverObjectId;
                     if(mouseOverObjectId && $ax.style.IsWidgetDisabled(mouseOverObjectId)) return;
 
                     if(mouseOverObjectId) $ax.style.SetWidgetMouseDown(mouseOverObjectId, false);
-                    $ax.style.SetLinkNotMouseDown(linkId);
+                    $ax.style.SetLinkNotMouseDown(elementId);
 
-                    $ax.annotation.updateLinkLocations($ax.GetParentIdFromLink(linkId));
+                    $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromLink(elementId));
 
                 }).click(function() {
                     var elementId = this.id;
@@ -1442,16 +1434,6 @@ $axure.internal(function($ax) {
         _attachIxStyleEvents($ax.getObjectFromElementId(elementId), elementId, $jobj(elementId), true);
     }
 
-    function clearMouseDownIxStyle(e) {
-        if(_event.mouseDownObjectId) {
-            $('#' + _event.mouseDownObjectId).trigger(
-                { type: "mouseup",
-                  checkMouseOver: e.data && e.data.checkMouseOver
-                }
-            );
-        }
-    }
-
     var _dettachIxStyleEvents = function(elementId) {
         var $element = $jobj(elementId);
         $element.off('mouseenter.ixStyle')
@@ -1464,7 +1446,7 @@ $axure.internal(function($ax) {
         //attach button shape alternate styles
         var isDynamicPanel = $ax.public.fn.IsDynamicPanel(dObj.type);
         var needsMouseFilter = (ignoreHasIxStyles || $ax.event.HasIxStyles(dObj))
-            && dObj.type != 'hyperlink' && !$ax.public.fn.IsLayer(dObj.type) && !isDynamicPanel && dObj.type != $ax.constants.TEXT_TYPE &&
+            && dObj.type != 'hyperlink' && !$ax.public.fn.IsLayer(dObj.type) && !isDynamicPanel && dObj.type != 'richTextPanel' &&
             !$ax.public.fn.IsRepeater(dObj.type) && !$ax.public.fn.IsCheckBox(dObj.type) && !$ax.public.fn.IsRadioButton(dObj.type)
             && !$ax.public.fn.IsTreeNodeObject(dObj.type);
         if(needsMouseFilter) {
@@ -1479,7 +1461,8 @@ $axure.internal(function($ax) {
                 if(elementId == _event.mouseOverObjectId) return;
                 _event.mouseOverObjectId = elementId;
                 $ax.style.SetWidgetHover(elementId, true);
-                $ax.annotation.updateLinkLocations(elementId);
+                var textId = $ax.style.GetTextIdFromShape(elementId);
+                if(textId) $ax.annotation.updateLinkLocations(textId);
             //}).mouseleave(function () {
             }).on('mouseleave.ixStyle', function () {
                 var elementId = this.id;
@@ -1491,7 +1474,8 @@ $axure.internal(function($ax) {
                     _event.mouseOverObjectId = '';
                 }
                 $ax.style.SetWidgetHover(elementId, false);
-                $ax.annotation.updateLinkLocations(elementId);
+                var textId = $ax.style.GetTextIdFromShape(elementId);
+                if(textId) $ax.annotation.updateLinkLocations(textId);
             });
 
             //$element.bind($ax.features.eventNames.mouseDownName, function () {
@@ -1503,30 +1487,22 @@ $axure.internal(function($ax) {
                     if(parent.direct) return;
                 }
                 _event.mouseDownObjectId = elementId;
-                //since we don't do mouse capture, it's possible that the mouseup not get triggered later
-                //in that case, detect the mouseup on document and dragend
-                $(document).one("mouseup", {checkMouseOver: true}, clearMouseDownIxStyle);
-                $("#" + elementId).one("dragend", clearMouseDownIxStyle);
 
                 $ax.style.SetWidgetMouseDown(this.id, true);
-                $ax.annotation.updateLinkLocations(elementId);
+                $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromShape(elementId));
             //}).bind($ax.features.eventNames.mouseUpName, function () {
-            }).on($ax.features.eventNames.mouseUpName + '.ixStyle', function (e) {
+            }).on($ax.features.eventNames.mouseUpName + '.ixStyle', function () {
                 var elementId = this.id;
                 var parent = $ax.dynamicPanelManager.parentHandlesStyles(elementId);
                 if(parent) {
                     dynamicPanelMouseUp(parent.id);
                     if(parent.direct) return;
                 }
-
-                $(document).off("mouseup", clearMouseDownIxStyle);
-                $("#" + _event.mouseDownObjectId).off("dragend", clearMouseDownIxStyle);
-
                 _event.mouseDownObjectId = '';
                 if(!$ax.style.ObjHasMouseDown(elementId)) return;
 
-                $ax.style.SetWidgetMouseDown(elementId, false, e.checkMouseOver);
-                $ax.annotation.updateLinkLocations(elementId);
+                $ax.style.SetWidgetMouseDown(elementId, false);
+                $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromShape(elementId));
 
                 //there used to be something we needed to make images click, because swapping out the images prevents the click
                 // this is a note that we can eventually delete.
@@ -1647,7 +1623,7 @@ $axure.internal(function($ax) {
                 }
             }).bind('touchend', function(e) {
                 var touch = e.originalEvent && e.originalEvent.changedTouches && e.originalEvent.changedTouches[0];
-                if(!touch || !tapDownLoc || $ax.style.IsWidgetDisabled(elementId)) return;
+                if(!touch || !tapDownLoc) return;
 
                 var tapUpLoc = [touch.pageX, touch.pageY];
                 var xDiff = tapUpLoc[0] - tapDownLoc[0];
@@ -1986,38 +1962,29 @@ $axure.internal(function($ax) {
         }
     }
 
+//    if ($('#' + id).data('lastScrollTop') == undefined) $('#' + id).data('lastScrollTop', '0');
+//    _attachDefaultObjectEvent($('#' + id), elementId, 'scroll', function (e) {
+//        $ax.setjBrowserEvent(e);
+//        var currentEvent = $ax.getjBrowserEvent();
+//        var eventInfoFromEvent = $ax.getEventInfoFromEvent($ax.getjBrowserEvent(), false, elementId);
+//        if (map.onScroll) _handleEvent(elementId, eventInfoFromEvent, map.onScroll);
+//
+//        var currentTop = $('#' + id).scrollTop();
+//        var wasHandled = currentEvent.originalEvent.handled;
+//        if (map.onScrollUp && currentTop < $('#' + id).data('lastScrollTop')) {
+//            currentEvent.originalEvent.handled = false;
+//            _handleEvent(elementId, eventInfoFromEvent, map.onScrollUp);
+//        } else if (map.onScrollDown && currentTop > $('#' + id).data('lastScrollTop')) {
+//            currentEvent.originalEvent.handled = false;
+//            _handleEvent(elementId, eventInfoFromEvent, map.onScrollDown);
+//        }
+//        currentEvent.originalEvent.handled |= wasHandled;
+//        $('#' + id).data('lastScrollTop', currentTop);
+//    });
+
     //remember the scroll bar position, so we can detect scroll up/down
     var lastScrollTop;
-
-    var fireEventForPageOrMaster = function (elementId, eventName, interactionMap, isPage, skipShowDescription, synthetic) {
-        if(!interactionMap) return;
-
-        var axEvent = interactionMap[eventName];
-        var scrolling = eventName === "onScroll";
-        if (scrolling && !axEvent) axEvent = interactionMap.onScrollUp || interactionMap.onScrollDown;
-
-        if (axEvent) {
-            var currentEvent = $ax.getjBrowserEvent();
-            var eventInfo = $ax.getEventInfoFromEvent(currentEvent, skipShowDescription, elementId);
-
-            if(isPage) {
-                eventInfo.label = $ax.pageData.page.name;
-                eventInfo.friendlyType = 'Page';
-            } else eventInfo.isMasterEvent = true;
-
-            if(scrolling) _handleScrollEvent(elementId, eventInfo, currentEvent.originalEvent, _event.windowScrollingUp, _event.windowScrollingDown, interactionMap, skipShowDescription, synthetic);
-            else _handleEvent(elementId, eventInfo, axEvent, skipShowDescription, synthetic);
-        }
-    }
     // Filters include page, referenceDiagramObject, dynamicPanel, and repeater.
-    var _callFilterCheck = function(callFilter, type) {
-        for(var index = 0; index < callFilter.length; index++) {
-            var currentType = callFilter[index];
-            if(currentType === $ax.constants.ALL_TYPE || currentType === type) return true;
-        }
-        return false;
-    };
-
     var fireEventThroughContainers = function(eventName, objects, synthetic, searchFilter, callFilter, path, itemId) {
         // TODO: may want to pass in this as a parameter. At that point, may want to convert some of them to an option parameter. For now this is the only case
         var skipShowDescription = eventName == 'onLoad';
@@ -2025,23 +1992,37 @@ $axure.internal(function($ax) {
         // If objects undefined, load page
         if(!objects) {
             if(_callFilterCheck(callFilter, $ax.constants.PAGE_TYPE)) {
-                //if scrolling, set direction, later master will know
-                if(eventName === "onScroll") {
-                    var currentScrollTop = $(window).scrollTop();
-                    _event.windowScrollingUp = currentScrollTop < lastScrollTop;
-                    _event.windowScrollingDown = currentScrollTop > lastScrollTop;
+                var map = $ax.pageData.page.interactionMap;
+                var currentEvent = $ax.getjBrowserEvent();
+
+                var pageEvent = map && map[eventName];
+                var scrolling = currentEvent && currentEvent.type === "scroll";
+                if (scrolling && !pageEvent && map) pageEvent = map.onScrollUp || map.onScrollDown;
+
+                if(pageEvent) {
+                    var pageEventInfo = $ax.getEventInfoFromEvent(currentEvent, skipShowDescription, '');
+
+                    pageEventInfo.label = $ax.pageData.page.name;
+                    pageEventInfo.friendlyType = 'Page';
+
+                    if (!scrolling || map.onScroll) _handleEvent('', pageEventInfo, pageEvent, skipShowDescription, synthetic);
+
+                    if (scrolling) {
+                        var wasHandled = currentEvent.originalEvent.handled;
+                        var currentScrollTop = $(window).scrollTop();
+                        if(map.onScrollUp && currentScrollTop < lastScrollTop) {
+                            currentEvent.originalEvent.handled = false;
+                            _handleEvent('', pageEventInfo, map.onScrollUp, skipShowDescription, synthetic);
+                        } else if (map.onScrollDown && currentScrollTop > lastScrollTop) {
+                            currentEvent.originalEvent.handled = false;
+                            _handleEvent('', pageEventInfo, map.onScrollDown, skipShowDescription, synthetic);
+                        }
+                        currentEvent.originalEvent.handled |= wasHandled;
+                        lastScrollTop = currentScrollTop;
+                    }
                 }
-
-                fireEventForPageOrMaster('', eventName, $ax.pageData.page.interactionMap, true, skipShowDescription, synthetic);
             }
-            if(searchFilter.indexOf($ax.constants.PAGE_TYPE) != -1) fireEventThroughContainers(eventName, $ax.pageData.page.diagram.objects, synthetic, searchFilter, callFilter);
-            //reset and save scrolling info at the end
-            if(currentScrollTop) {
-                lastScrollTop = currentScrollTop;
-                _event.windowScrollingUp = undefined;
-                _event.windowScrollingDown = undefined;
-            }
-
+            if (searchFilter.indexOf($ax.constants.PAGE_TYPE) != -1) fireEventThroughContainers(eventName, $ax.pageData.page.diagram.objects, synthetic, searchFilter, callFilter);
             return;
         }
 
@@ -2073,7 +2054,12 @@ $axure.internal(function($ax) {
 
             if($ax.public.fn.IsReferenceDiagramObject(obj.type)) {
                 if(_callFilterCheck(callFilter, $ax.constants.REFERENCE_DIAGRAM_OBJECT_TYPE)) {
-                    fireEventForPageOrMaster(objId, eventName, $ax.pageData.masters[obj.masterId].interactionMap, false, skipShowDescription, synthetic);
+                    var axEvent = $ax.pageData.masters[obj.masterId].interactionMap[eventName];
+                    if(axEvent) {
+                        var eventInfo = $ax.getEventInfoFromEvent($ax.getjBrowserEvent(), skipShowDescription, objId);
+                        eventInfo.isMasterEvent = true;
+                        _handleEvent(objId, eventInfo, axEvent, skipShowDescription, synthetic);
+                    }
                 }
                 if(searchFilter.indexOf($ax.constants.REFERENCE_DIAGRAM_OBJECT_TYPE) != -1) fireEventThroughContainers(eventName, $ax.pageData.masters[obj.masterId].diagram.objects, synthetic, searchFilter, callFilter, pathCopy, itemId);
             } else if($ax.public.fn.IsDynamicPanel(obj.type)) {
@@ -2096,16 +2082,21 @@ $axure.internal(function($ax) {
                 }
             } else if($ax.public.fn.IsLayer(obj.type)) {
                 if(_callFilterCheck(callFilter, $ax.constants.LAYER_TYPE)) $ax.event.raiseSyntheticEvent(objId, eventName, skipShowDescription, undefined, !synthetic);
-
-                if(obj.objs && obj.objs.length > 0) {
-                    fireEventThroughContainers(eventName, obj.objs, synthetic, searchFilter, callFilter, path, itemId);
-                }
             }
         }
 
         eventNesting -= 1;
 
-    }; // FOCUS stuff
+    };
+
+    var _callFilterCheck = function(callFilter, type) {
+        for(var index = 0; index < callFilter.length; index++) {
+            var currentType = callFilter[index];
+            if(currentType === $ax.constants.ALL_TYPE || currentType === type) return true;
+        }
+        return false;
+    };
+    // FOCUS stuff
     (function() {
 
     })();
@@ -2985,10 +2976,6 @@ $axure.internal(function($ax) {
     };
 
     var _moveSingleWidget = function (elementId, delta, options, onComplete) {
-        if(!delta.x && !delta.y) {
-            $ax.action.fireAnimationFromQueue(elementId, $ax.action.queueTypes.move);
-            return;
-        }
         var fixedInfo = $ax.dynamicPanelManager.getFixedInfo(elementId);
         var xProp = 'left';
         var xDiff = '+=';
@@ -3015,7 +3002,7 @@ $axure.internal(function($ax) {
         css[xProp] = xDiff + delta.x;
         css[yProp] = yDiff + delta.y;
         var moveInfo = $ax.move.PrepareForMove(elementId, delta.x, delta.y,false, options);
-        $jobjAll(elementId).animate(css, {
+        $jobj(elementId).animate(css, {
             duration: options.duration,
             easing: options.easing,
             queue: false,
@@ -3328,8 +3315,13 @@ $axure.internal(function($ax) {
                     }
 
                     $ax.event.raiseSyntheticEvent(elementId, 'onRotate');
-                    if(offset.x == 0 && offset.y == 0) _rotateSingle(elementId, rotateDegree, rotateInfo.rotateType == 'location', delta, options, options.stop, true);
-                    else _rotateSingleOffset(elementId, rotateDegree, rotateInfo.rotateType == 'location', delta, { x: offset.x, y: offset.y }, options, options.stop);
+                    if(offset.x == 0 && offset.y == 0) {
+                        _rotateSingle(elementId, rotateDegree, rotateInfo.rotateType == 'location', delta, options, options.stop);
+                        _fireAnimationFromQueue(elementId, queueTypes.move);
+                        if(moveInfo) $ax.event.raiseSyntheticEvent(elementId, 'onMove');
+                        return;
+                    }
+                    _rotateSingleOffset(elementId, rotateDegree, rotateInfo.rotateType == 'location', delta, { x: offset.x, y: offset.y }, options, options.stop);
                     if(moveInfo) $ax.event.raiseSyntheticEvent(elementId, 'onMove');
                 }
             });
@@ -3346,13 +3338,10 @@ $axure.internal(function($ax) {
         if (anchor.indexOf('bottom') != -1) offset.y += boundingRect.height / 2;
     }
 
-    var _rotateSingle = function(elementId, rotateDegree, rotateTo, delta, options, stop, handleMove) {
+    var _rotateSingle = function(elementId, rotateDegree, rotateTo, delta, options, stop) {
         var degreeDelta = _applyRotateStop(rotateDegree, $ax.move.getRotationDegree(elementId), rotateTo, stop);
         $ax('#' + elementId).rotate(degreeDelta, options.easing, options.duration, false, true);
-        if(handleMove) {
-            if (delta.x || delta.y) _moveSingleWidget(elementId, delta, options);
-            else $ax.action.fireAnimationFromQueue(elementId, $ax.action.queueTypes.move);
-        }
+        if(delta.x || delta.y) _moveSingleWidget(elementId, delta, options);
     };
 
     var _rotateSingleOffset = function (elementId, rotateDegree, rotateTo, delta, offset, options, stop, resizeOffset) {
@@ -3542,7 +3531,7 @@ $axure.internal(function($ax) {
                             }
                         }
                     });
-                    if(!isLayer) animations.push({ id: childId, type: queueTypes.move, func: function () {} });
+                    if(!isLayer && moves) animations.push({ id: childId, type: queueTypes.move, func: function () {} });
                     if(!isLayer && rotateInfo) animations.push({ id: childId, type: queueTypes.rotate, func: function () {} });
                 })(childrenIds[idIndex]);
             }
@@ -3608,9 +3597,8 @@ $axure.internal(function($ax) {
                         } else {
                             // Not handling move so pass in nop delta
                             _rotateSingle(elementId, rotateDegree, rotateInfo.rotateType == 'location', { x: 0, y: 0 }, options, options.rotateStop);
-                            if (moves) _fireAnimationFromQueue(elementId, queueTypes.move);
                         }
-                    } else if(!css && moves) _moveSingleWidget(elementId, delta, options);
+                    } else _moveSingleWidget(elementId, delta, options);
 
                     // Have to do it down here to make sure move info is registered
                     if(moveInfo) $ax.event.raiseSyntheticEvent(elementId, 'onMove');
@@ -3622,6 +3610,7 @@ $axure.internal(function($ax) {
                         });
                     } else {
                         _fireAnimationFromQueue(elementId, queueTypes.resize);
+                        if(moves && !rotateHandlesMove) _fireAnimationFromQueue(elementId, queueTypes.move);
 
                         $ax.event.raiseSyntheticEvent(elementId, 'onResize');
                     }
@@ -3728,18 +3717,7 @@ $axure.internal(function($ax) {
         var jobj = $jobj(elementId);
         //if this is pinned dp, we will mantain the pin, no matter how you resize it; so no need changes left or top
         //NOTE: currently only pinned DP has position == fixed
-        if(jobj.css('position') == 'fixed') {
-            if(obj.fixedHorizontal && obj.fixedHorizontal == 'center') css['margin-left'] = '+=' + delta.x;
-            if(obj.fixedVertical && obj.fixedVertical == 'middle') css['margin-top'] = '+=' + delta.y;
-            return css;
-        }
-
-        // If it is pinned, but temporarily not fixed because it is wrappen in a container, then just make sure to anchor it correctly
-        if(obj.fixedVertical) {
-            if(obj.fixedVertical == 'middle') anchor = obj.fixedHorizontal;
-            else anchor = obj.fixedVertical + (obj.fixedHorizontal == 'center' ? '' : ' ' + obj.fixedHorizontal);
-            
-        }
+        if(jobj.css('position') == 'fixed') return css;
 
         //use position relative to parents
         //var position = obj.generateCompound ? $ax.public.fn.getWidgetBoundingRect(elementId) : $ax.public.fn.getPositionRelativeToParent(elementId);
@@ -3802,6 +3780,7 @@ $axure.internal(function($ax) {
         if($ax.dynamicPanelManager.isPercentWidthPanel(obj)) changeLeft = false;
         else css.width = newWidth;
 
+
         var jobj = $jobj(elementId);
         //if this is pinned dp, we will mantain the pin, no matter how you resize it; so no need changes left or top
         //NOTE: currently only pinned DP has position == fixed
@@ -3812,45 +3791,25 @@ $axure.internal(function($ax) {
         var currentLeft = axObj.locRelativeIgnoreLayer(false);
         var currentTop = axObj.locRelativeIgnoreLayer(true);
 
-        var resizable = $ax.public.fn.IsResizable(obj.type);
-        if(anchor.indexOf("top") > -1) {
-            var topDelta = (currentTop - layerBoundingRect.top) * heightChangedPercent;
-            if(!resizable && Math.round(topDelta)) topDelta += currentSize.height * heightChangedPercent;
-        } else if(anchor.indexOf("bottom") > -1) {
-            if(resizable) topDelta = (currentTop - layerBoundingRect.bottom) * heightChangedPercent;
-            else {
-                var bottomDelta = Math.round(currentTop + currentSize.height - layerBoundingRect.bottom) * heightChangedPercent;
-                if(bottomDelta) topDelta = bottomDelta - currentSize.height * heightChangedPercent;
-                else topDelta = 0;
+        if(anchor.indexOf("center") > -1) {
+            var topDelta = (childCenterPoint.y - layerBoundingRect.centerPoint.y) * heightChangedPercent - currentSize.height * heightChangedPercent / 2;
+            if(changeLeft) var leftDelta = (childCenterPoint.x - layerBoundingRect.centerPoint.x) * widthChangedPercent - currentSize.width * widthChangedPercent / 2;
+        } else {
+            if(anchor.indexOf("top") > -1) {
+                topDelta = (currentTop - layerBoundingRect.top) * heightChangedPercent;
+            } else if(anchor.indexOf("bottom") > -1) {
+                topDelta = (currentTop - layerBoundingRect.bottom) * heightChangedPercent;
+            } else {
+                topDelta = (childCenterPoint.y - layerBoundingRect.centerPoint.y) * heightChangedPercent - currentSize.height * heightChangedPercent / 2;
             }
-        } else { //center vertical
-            if(resizable) topDelta = (childCenterPoint.y - layerBoundingRect.centerPoint.y)*heightChangedPercent - currentSize.height*heightChangedPercent/2;
-            else {
-                var centerTopChange = Math.round(childCenterPoint.y - layerBoundingRect.centerPoint.y)*heightChangedPercent;
-                if(centerTopChange > 0) topDelta = centerTopChange + Math.abs(currentSize.height * heightChangedPercent / 2);
-                else if(centerTopChange < 0) topDelta = centerTopChange - Math.abs(currentSize.height * heightChangedPercent / 2);
-                else topDelta = 0;
-            }
-        }
 
-        if(changeLeft) {
-            if(anchor.indexOf("left") > -1) {
-                var leftDelta = (currentLeft - layerBoundingRect.left) * widthChangedPercent;
-                if(!resizable && Math.round(leftDelta)) leftDelta += currentSize.width * widthChangedPercent;
-            } else if(anchor.indexOf("right") > -1) {
-                if(resizable) leftDelta = (currentLeft - layerBoundingRect.right) * widthChangedPercent;
-                else {
-                    var rightDelta = Math.round(currentLeft + currentSize.width - layerBoundingRect.right) * widthChangedPercent;
-                    if(rightDelta) leftDelta = rightDelta - currentSize.width * widthChangedPercent;
-                    else leftDelta = 0;
-                }
-            } else { //center horizontal
-                if(resizable) leftDelta = (childCenterPoint.x - layerBoundingRect.centerPoint.x)*widthChangedPercent - currentSize.width*widthChangedPercent/2;
-                else {
-                    var centerLeftChange = Math.round(childCenterPoint.x - layerBoundingRect.centerPoint.x) * widthChangedPercent;
-                    if(centerLeftChange > 0) leftDelta = centerLeftChange + Math.abs(currentSize.width * widthChangedPercent / 2);
-                    else if(centerLeftChange < 0) leftDelta = centerLeftChange - Math.abs(currentSize.width * widthChangedPercent / 2);
-                    else leftDelta = 0;
+            if(changeLeft) {
+                if(anchor.indexOf("left") > -1) {
+                    leftDelta = (currentLeft - layerBoundingRect.left) * widthChangedPercent;
+                } else if(anchor.indexOf("right") > -1) {
+                    leftDelta = (currentLeft - layerBoundingRect.right) * widthChangedPercent;
+                } else {
+                    leftDelta = (childCenterPoint.x - layerBoundingRect.centerPoint.x) * widthChangedPercent - currentSize.width * widthChangedPercent / 2;
                 }
             }
         }
@@ -4172,7 +4131,7 @@ $axure.internal(function($ax) {
                 }
 
                 //            $('#' + $ax.repeater.applySuffixToElementId(elementId, '_img')).attr('src', img);
-                $jobj($ax.GetImageIdFromShape(elementId)).attr('src', img);
+                $jobj($ax.style.GetImageIdFromShape(elementId)).attr('src', img);
 
                 //Set up overrides
                 $ax.style.mapElementIdToImageOverrides(elementId, evaluatedImgs);
@@ -4627,7 +4586,10 @@ $axure.internal(function($ax) {
             var id = ids[i];
 
             // If calling this on button shape, get the id of the rich text panel inside instead
-            if($obj(id).type !== $ax.constants.LINK_TYPE) id = $ax.GetTextPanelId(id, true);
+            var type = $obj(id).type;
+            if(type != 'richTextPanel' && type != 'hyperlink') {
+                id = $jobj(id).find('.text')[0].id;
+            }
 
             var element = window.document.getElementById(id);
             $ax.visibility.SetVisible(element, value != '');
@@ -4635,16 +4597,6 @@ $axure.internal(function($ax) {
             $ax.style.transformTextWithVerticalAlignment(id, function() {
                 var spans = $jobj(id).find('span');
                 if(plain) {
-                    // Can't set value as text because '<br/>' doesn't actually do a line break
-                    // Can't set vaule as html because it doesn't like '<' and ignores all after it
-                    // Create tags yourself
-                    var lines = value.split(/\r\n|\n/);
-                    //if we are dealing with only one line, just reuse the old one
-                    if(spans.length === 1 && lines.length === 1) {
-                        spans[0].innerHTML = value;
-                        return;
-                    }
-
                     // Wrap in span and p, style them accordingly.
                     var span = $('<span></span>');
                     if(spans.length > 0) {
@@ -4652,10 +4604,14 @@ $axure.internal(function($ax) {
                         span.attr('id', $(spans[0]).attr('id'));
                     }
 
+                    // Can't set value as text because '<br/>' doesn't actually do a line break
+                    // Can't set vaule as html because it doesn't like '<' and ignores all after it
+                    // Create tags yourself
+                    var lines = value.split(/\r\n|\n/);
                     if(lines.length == 1) span.text(value);
                     else {
                         for(var i = 0; i < lines.length; i++) {
-                            if(i != 0) span.append($('<br />'));
+                            if (i != 0) span.append($('<br />'));
                             var line = lines[i];
                             if(line.length == 0) continue;
 
@@ -4665,20 +4621,17 @@ $axure.internal(function($ax) {
                         }
                     }
 
+                    var p = $('<p></p>');
                     var ps = $jobj(id).find('p');
-                    if(ps && ps.length) {
-                        ps[0].innerHTML = $('<div></div>').append(span).html();;
-                        if(ps.length > 1) {
-                            for(var i = 1; i < ps.length; i++) {
-                                $(ps[i]).remove();
-                            }
-                        }
-                    } else {
-                        var p = $('<p></p>');
-                        p.append(span);
-                        element.innerHTML = $('<div></div>').append(p).html();
+                    if(ps.length > 0) {
+                        p.attr('style', $(ps[0]).attr('style'));
+                        p.attr('id', $(ps[0]).attr('id'));
                     }
-                } else element.innerHTML = finalValue;
+                    p.append(span);
+                    finalValue = $('<div></div>').append(p).html();
+                }
+
+                element.innerHTML = finalValue;
             });
 
             if(!plain) $ax.style.CacheOriginalText(id, true);
@@ -4921,10 +4874,10 @@ $axure.internal(function($ax) {
 
 
     var _genRect = function(info, roundHalfPixel) {
-        var x = info.pagex();
-        var y = info.pagey();
-        var w = info.width();
-        var h = info.height();
+        var x = info.pagex;
+        var y = info.pagey;
+        var w = info.width;
+        var h = info.height;
 
         if(roundHalfPixel) {
             if(x % 1 != 0) {
@@ -5906,14 +5859,12 @@ $axure.internal(function($ax) {
     };
     _repeaterManager.load = _loadRepeaters;
 
-    var fullRefresh = {};
-    var repeatersReady = false;
-    var _initRepeaters = function () {
-        repeatersReady = true;
+    var _loaded = {};
+    var _initRepeaters = function() {
         $ax(function(obj, repeaterId) {
-            return $ax.public.fn.IsRepeater(obj.type);
+            return $ax.public.fn.IsRepeater(obj.type) && !_loaded[repeaterId];
         }).each(function(obj, repeaterId) {
-            _refreshRepeater(repeaterId, undefined, !fullRefresh[repeaterId]);
+            _refreshRepeater(repeaterId, undefined, true);
             //// Fix selected and default if necessary
             //var states = obj.evaluatedStates[repeaterId];
             //if(!states) return; // If there are no evaluated states the repeater id key could not be mapped to an array of states.
@@ -5943,11 +5894,7 @@ $axure.internal(function($ax) {
     };
     _repeaterManager.setDataSet = _setRepeaterDataSet;
 
-    var _refreshRepeater = function (repeaterId, eventInfo, itemsPregen) {
-        if(!repeatersReady) {
-            fullRefresh[repeaterId] = true;
-            return;
-        }
+    var _refreshRepeater = function(repeaterId, eventInfo, itemsPregen) {
         // Don't show if you have a parent rdos thats limboed.
         var rdoPath = $ax.getPathFromScriptId(repeaterId);
         // Check each parent rdo through appropriate views to see if you are limboed
@@ -5959,7 +5906,8 @@ $axure.internal(function($ax) {
 
             $ax.splice(rdoPath, rdoPath.length - 1, 1);
         }
-        
+
+        _loaded[repeaterId] = true;
         $ax.action.refreshStart(repeaterId);
         $ax.style.ClearCacheForRepeater(repeaterId);
 
@@ -6438,12 +6386,11 @@ $axure.internal(function($ax) {
             var getComparator = function(columnName, ascending, type, compare) {
                 // If this needs to be sped up, break up into several smaller functions conditioned off of type
                 return function(row1, row2) {
-                    // If column undefined have it be empty string, NaN, or invalid date
-                    //// If column undefined, no way to measure this, so call it a tie.
-                    //if(row1[columnName] === undefined || row2[columnName] === undefined) return 0;
+                    // If column undefined, no way to measure this, so call it a tie.
+                    if(row1[columnName] === undefined || row2[columnName] === undefined) return 0;
 
-                    var text1 = (row1[columnName] && row1[columnName].text) || '';
-                    var text2 = (row2[columnName] && row2[columnName].text) || '';
+                    var text1 = row1[columnName].text;
+                    var text2 = row2[columnName].text;
 
                     // This means we are case insensitive, so lowercase everything to kill casing
                     if(type == 'Text') {
@@ -6461,8 +6408,8 @@ $axure.internal(function($ax) {
                         if(text1 < text2 ^ ascending) return 1;
                         else return -1;
                     } else if(type == 'Number') {
-                        var num1 = text1 == '' ? NaN : Number(text1);
-                        var num2 = text2 == '' ? NaN : Number(text2);
+                        var num1 = Number(text1);
+                        var num2 = Number(text2);
 
                         if(isNaN(num1) && isNaN(num2)) return 0;
                         if(isNaN(num1) || isNaN(num2)) return isNaN(num1) ? 1 : -1;
@@ -6537,7 +6484,6 @@ $axure.internal(function($ax) {
         var dataFiltered = [];
         var filters = repeaterToFilters[repeaterId] || [];
         if (filters.length != 0) {
-            if(!eventInfo) eventInfo = $ax.getBasicEventInfo();
             var oldTarget = eventInfo.targetElement;
             var oldSrc = eventInfo.srcElement;
             var oldThis = eventInfo.thiswidget;
@@ -7495,7 +7441,7 @@ $axure.internal(function($ax) {
         var obj = $obj(id);
         if (!obj || !$ax.public.fn.IsDynamicPanel(obj.type)) return id;
 
-        var children = $ax.visibility.applyWidgetContainer(id, true, false, true).children();
+        var children = $ax.visibility.applyWidgetContainer(id, true).children();
         for (var i = 0; i < children.length; i++) {
             var child = children[i];
             while ($ax.visibility.isContainer(child.id)) child = $(child).children()[0];
@@ -7876,12 +7822,15 @@ $axure.internal(function($ax) {
         for (var i = 0; i < children.length; i++) {
             var child = $(children[i]);
 
+            //don't move fixed
+            if(child.css('position') == 'fixed') continue;
+
             // Check for basic links
             if(child[0] && child[0].tagName == 'A' && child.hasClass('basiclink')) child = child.children();
             var childId = child.attr('id');
 
-            // Don't move self, and check id to make sure it is a widget and lastly check if it is a fixed panel.
-            if(childId == id || !childId || childId[0] != 'u' || childId.indexOf('ann') != -1 || childId.indexOf('ref') != -1 || $obj(childId).fixedVertical) {
+            // Don't move self, and check id to make sure it is a widget.
+            if(childId == id || !childId || childId[0] != 'u') {
                 allMove = false;
                 continue;
             }
@@ -7980,7 +7929,7 @@ $axure.internal(function($ax) {
 
                 if(hover) $ax.style.SetWidgetHover(elementId, value);
                 else $ax.style.SetWidgetMouseDown(elementId, value);
-                $ax.annotation.updateLinkLocations(elementId);
+                $ax.annotation.updateLinkLocations($ax.style.GetTextIdFromShape(elementId));
 
                 hoverChildren(children[i].children);
             }
@@ -8138,8 +8087,7 @@ $axure.internal(function($ax) {
         //TODO: [mas] handle required type
         if((sto.prop == 'url' || sto.prop == 'img') && sto.thisSTO.sto == 'item') return _stoHandlers.item(sto.thisSTO, scope, eventInfo, sto.prop);
         var thisObj = _evaluateSTO(sto.thisSTO, scope, eventInfo);
-        var prop = thisObj[sto.prop] instanceof Function ? thisObj[sto.prop]() : thisObj[sto.prop];
-        return prop;
+        return thisObj[sto.prop];
     };
 
     var _binOps = {};
@@ -8225,8 +8173,7 @@ $axure.internal(function($ax) {
 // ******* Deep Copy ******** //
 $axure.internal(function($ax) {
     // TODO: [ben] Ah, infinite loops cause major issues here. Tried saving objects we've already hit, but that didn't seem to work (at least at my first shot).
-    // TODO:  [ben] To continue from above, added a filter to filter out problem keys. Will need a better way of sorting this out eventually.
-    var _deepCopy = function (original, trackCopies, filter) {
+    var _deepCopy = function(original, trackCopies) {
         if(trackCopies) {
             var index = _getCopyIndex(original);
             if(index != -1) return _originalToCopy[index][1];
@@ -8236,7 +8183,7 @@ $axure.internal(function($ax) {
         if(!isArray && !isObject) return original;
         var copy = isArray ? [] : { };
         if(trackCopies) _originalToCopy.push([original, copy]);
-        isArray ? deepCopyArray(original, trackCopies, copy, filter) : deepCopyObject(original, trackCopies, copy, filter);
+        isArray ? deepCopyArray(original, trackCopies, copy) : deepCopyObject(original, trackCopies, copy);
         return copy;
     };
     $ax.deepCopy = _deepCopy;
@@ -8250,25 +8197,27 @@ $axure.internal(function($ax) {
     };
 
     $ax.eventCopy = function(eventInfo) {
-        var copy = _deepCopy(eventInfo, true, ['dragInfo', 'elementQuery', 'obj']);
-        // reset the map. TODO: May need to reset elsewhere too, but this is the only way it's used currently
+        var dragInfo = eventInfo.dragInfo;
+        delete eventInfo.dragInfo;
+        var copy = _deepCopy(eventInfo, true);
+        copy.dragInfo = dragInfo;
+        eventInfo.dragInfo = dragInfo;
+        // reset the map.
         _originalToCopy = [];
 
         return copy;
     };
 
-    var deepCopyArray = function(original, trackCopies, copy, filter) {
+    var deepCopyArray = function(original, trackCopies, copy) {
         for(var i = 0; i < original.length; i++) {
-            copy[i] = _deepCopy(original[i], trackCopies, filter);
+            copy[i] = _deepCopy(original[i], trackCopies);
         }
     };
 
-    var deepCopyObject = function(original, trackCopies, copy, filter) {
+    var deepCopyObject = function(original, trackCopies, copy) {
         for(var key in original) {
-            if(!original.hasOwnProperty(key)) continue; // Continue if the prop was not put there like a dictionary, but just a native part of the object
-
-            if(filter && filter.indexOf[key] != -1) copy[key] = original[key]; // If that key is filtered out, skip recursion on it.
-            else copy[key] = _deepCopy(original[key], trackCopies, filter);
+            if(!original.hasOwnProperty(key)) continue;
+            copy[key] = _deepCopy(original[key], trackCopies);
         }
     };
 
@@ -8827,7 +8776,6 @@ $axure.internal(function($ax) {
         if (fixedInfo.horizontal == 'right') {
             horzProp = 'right';
             horzX = to ? $(window).width() - x - Number(jobj.css('right').replace('px', '')) - query.width() : -x;
-            var leftChanges = -horzX;
         } else if(fixedInfo.horizontal == 'center') {
             horzProp = 'margin-left';
             if (to) horzX = x - $(window).width() / 2;
@@ -8836,7 +8784,6 @@ $axure.internal(function($ax) {
         if (fixedInfo.vertical == 'bottom') {
             vertProp = 'bottom';
             vertY = to ? $(window).height() - y - Number(jobj.css('bottom').replace('px', '')) - query.height() : -y;
-            var topChanges = -vertY;
         } else if (fixedInfo.vertical == 'middle') {
             vertProp = 'margin-top';
             if (to) vertY = y - $(window).height() / 2;
@@ -8845,8 +8792,8 @@ $axure.internal(function($ax) {
         //todo currently this always save the info, which is not needed for compound vector children and maybe some other cases
         //let's optimize it later, only register if registerid is valid..
         widgetMoveInfo[id] = {
-            x: leftChanges === undefined ? horzX : leftChanges,
-            y: topChanges === undefined ? vertY : topChanges,
+            x: horzX,
+            y: vertY,
             options: options
         };
 
@@ -8926,9 +8873,9 @@ $axure.internal(function($ax) {
             var completeCount = query.length;
             query.animate(cssStyles, {
                 duration: options.duration, easing: options.easing, queue: false, complete: function () {
+                    if (animationCompleteCallback) animationCompleteCallback();
                     completeCount--;
                     if(completeCount == 0 && rootLayer) $ax.visibility.popContainer(rootLayer, false);
-                    if(animationCompleteCallback) animationCompleteCallback();
                     if(shouldFire) $ax.action.fireAnimationFromQueue(id, $ax.action.queueTypes.move);
                 }});
         }
@@ -8988,10 +8935,8 @@ $axure.internal(function($ax) {
     }
 
 
-    _move.circularMove = function (id, degreeDelta, centerPoint, moveDelta, rotatableMove, resizeOffset, options, fireAnimationQueue, completionCallback, willDoRotation) {
+    _move.circularMove = function (id, degreeDelta, centerPoint, moveDelta, rotatableMove, resizeOffset, options, fireAnimationQueue, completionCallback) {
         var elem = $jobj(id);
-        if(!willDoRotation) elem = $addAll(elem, id);
-
         var moveInfo = $ax.move.PrepareForMove(id, moveDelta.x, moveDelta.y, false, options);
         // If not rotating, still need to check moveDelta and may need to handle that.
         if (degreeDelta === 0) {
@@ -9068,7 +9013,7 @@ $axure.internal(function($ax) {
 
     //rotate a widget by degree, center is 50% 50%
     _move.rotate = function (id, degree, easing, duration, to, shouldFire, completionCallback) {
-        var currentDegree = _move.getRotationDegree(id);
+        var currentDegree = _getRotationDegree(id);
         if(to) degree = degree - currentDegree;
 
         if(degree === 0) {
@@ -9076,7 +9021,8 @@ $axure.internal(function($ax) {
             return;
         }
 
-        var query = $jobj(id);
+        var query = $jobj(id).add($jobj(id + '_ann')).add($jobj(id + '_ref'));
+
         var stepFunc = function(now) {
             var degreeDelta = now - rotation.degree;
             var newDegree = currentDegree + degreeDelta;
@@ -9089,8 +9035,6 @@ $axure.internal(function($ax) {
                 $ax.action.fireAnimationFromQueue($ax.public.fn.compoundIdFromComponent(id), $ax.action.queueTypes.rotate);
             }
             if(completionCallback) completionCallback();
-
-            $ax.annotation.adjustIconLocation(id);
         };
 
         var rotation = { degree: 0 };
@@ -9107,6 +9051,7 @@ $axure.internal(function($ax) {
                 queue: false,
                 step: stepFunc,
                 complete: onComplete
+            
             });
         }
     };
@@ -9170,8 +9115,18 @@ $axure.internal(function($ax) {
         });
     };
 
-    _move.getRotationDegreeFromElement = function(element) {
+    var _getRotationDegree = _move.getRotationDegree = function(elementId) {
+        if($ax.public.fn.IsLayer($obj(elementId).type)) {
+            return $jobj(elementId).data('layerDegree');
+        }
+
+        var element = document.getElementById(elementId);
         if(element == null) return NaN;
+        //var transformString = element.style.transform ||
+        //    element.style.OTransform ||
+        //    element.style.msTransform ||
+        //    element.style.MozTransform ||
+        //    element.style.webkitTransform;
 
         var transformString = element.style['transform'] ||
             element.style['-o-transform'] ||
@@ -9197,6 +9152,7 @@ $axure.internal(function($ax) {
             st.getPropertyValue("-ms-transform") ||
             st.getPropertyValue("-moz-transform") ||
             st.getPropertyValue("-webkit-transform");
+            
 
         if(!tr || tr === 'none') return 0;
         var values = tr.split('(')[1];
@@ -9211,15 +9167,20 @@ $axure.internal(function($ax) {
             radians += (2 * Math.PI);
         }
 
-        return radians * (180 / Math.PI);
+        var angle = Math.round(radians * (180 / Math.PI));
+
+        return angle;
     };
 
-    _move.getRotationDegree = function(elementId) {
-        if($ax.public.fn.IsLayer($obj(elementId).type)) {
-            return $jobj(elementId).data('layerDegree');
-        }
-        return _move.getRotationDegreeFromElement(document.getElementById(elementId));
-    }
+//    var generateFilter = function(deg) {
+//        var rot, cos, sin, matrix;
+//
+//        rot=deg>=0 ? Math.PI*deg/180 : Math.PI*(360+deg)/180;
+//        cos=Math.cos(rot);
+//        sin=Math.sin(rot);
+//        matrix='M11='+cos+',M12='+(-sin)+',M21='+sin+',M22='+cos+',SizingMethod="auto expand"';
+//        return 'progid:DXImageTransform.Microsoft.Matrix('+matrix+')';
+//    }
 });
 //***** visibility.js *****//
 $axure.internal(function($ax) {
@@ -9307,17 +9268,6 @@ $axure.internal(function($ax) {
             options.onComplete = function () {
                 if(complete) complete();
                 _popContainer(elementId, isPanel);
-                //using containers stops mouseleave from firing on IE/Edge and FireFox
-                if(!options.value && $ax.event.mouseOverObjectId && (FIREFOX || $axure.browser.isEdge || IE)) {
-                    var mouseOveredElement = $('#' + $ax.event.mouseOverObjectId);
-                    if(mouseOveredElement && !mouseOveredElement.is(":visible")) {
-                        var axObj = $obj($ax.event.mouseOverObjectId);
-
-                        if(($ax.public.fn.IsDynamicPanel(axObj.type) || $ax.public.fn.IsLayer(axObj.type)) && axObj.propagate) {
-                            mouseOveredElement.trigger('mouseleave');
-                        } else mouseOveredElement.trigger('mouseleave.ixStyle');
-                    }
-                }
                 //after showing dp, restore the scoll position
                 if(isPanel && options.value) _tryResumeScrollForDP(elementId, true);
             }
@@ -9555,7 +9505,6 @@ $axure.internal(function($ax) {
             }
         } else if (options.easing == 'flip') {
             //this container will hold 
-            var trapScroll = _trapScrollLoc(childId);
             var innerContainer = $('<div></div>');
             innerContainer.attr('id', containerId + "_inner");
             innerContainer.data('flip', options.direction == 'left' || options.direction == 'right' ? 'y' : 'x');
@@ -9573,36 +9522,40 @@ $axure.internal(function($ax) {
 
             completeTotal = 1;
             var flipdegree;
+            var requestAnimFrame = window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame || window.msRequestAnimationFrame ||
+                function (callback) {
+                    window.setTimeout(callback, 1000 / 60);
+                };
 
             var originForUpOrDown = '100% ' + containerHeight / 2 + 'px';
             if(options.value) {
-                //options.value == true means in or show, note to get here, the element must be currently hidden to show,
-                // we need to first flip it +/- 90deg without animation (180 if we want to show the back of the flip)
+                //options.value == true means in or show, note to get here, the element must be currently hidden
+                //to show, we need to first flip it 180deg without animation
                 switch(options.direction) {
                     case 'right':
                     case 'left':
-                        _setRotateTransformation(innerContainer, _getRotateString(true, options.direction === 'right', options.showFlipBack));
-                        flipdegree = 'rotateY(0deg)';
-                        break;
+                        _setRotateTransformation(innerContainer, 'rotateY(180deg)');
+                    flipdegree = options.direction === 'right' ? 'rotateY(360deg)' : 'rotateY(0deg)';
+                    break;
                     case 'up':
                     case 'down':
-                        innerContainer.css({
-                            '-webkit-transform-origin': originForUpOrDown,
-                            '-ms-transform-origin': originForUpOrDown,
-                            'transform-origin': originForUpOrDown,
-                        });
-                        _setRotateTransformation(innerContainer, _getRotateString(false, options.direction === 'up', options.showFlipBack));
-                        flipdegree = 'rotateX(0deg)';
-                        break;
+                    innerContainer.css({
+                        '-webkit-transform-origin': originForUpOrDown,
+                        '-ms-transform-origin': originForUpOrDown,
+                        'transform-origin': originForUpOrDown,
+                    });
+                    _setRotateTransformation(innerContainer, 'rotateX(180deg)');
+                    flipdegree = options.direction === 'up' ? 'rotateX(360deg)' : 'rotateX(0deg)';
+                    break;
                 }
 
                 var onFlipShowComplete = function() {
-                    var trapScroll = _trapScrollLoc(childId);
                     $ax.visibility.SetIdVisible(childId, true);
 
                     wrapped.insertBefore(innerContainer);
                     innerContainer.remove();
-                    trapScroll();
 
                     onComplete();
                 };
@@ -9628,12 +9581,14 @@ $axure.internal(function($ax) {
                 });
 
                 if(preserveScroll) _tryResumeScrollForDP(childId);
-                _setRotateTransformation(innerContainer, flipdegree, containerDiv, onFlipShowComplete, options.duration, true);
+                requestAnimFrame(function () {
+                    _setRotateTransformation(innerContainer, flipdegree, containerDiv, onFlipShowComplete, options.duration);
+                });
             } else { //hide or out
                 switch(options.direction) {
                     case 'right':
                     case 'left':
-                        flipdegree = _getRotateString(true, options.direction !== 'right', options.showFlipBack);
+                        flipdegree = options.direction === 'right' ? 'rotateY(180deg)' : 'rotateY(-180deg)';
                         break;
                     case 'up':
                     case 'down':
@@ -9643,17 +9598,15 @@ $axure.internal(function($ax) {
                             '-ms-transform-origin': originForUpOrDown,
                             'transform-origin': originForUpOrDown,
                         });
-                        flipdegree = _getRotateString(false, options.direction !== 'up', options.showFlipBack);
-                        break;
+                        flipdegree = options.direction === 'up' ? 'rotateX(180deg)' : 'rotateX(-180deg)';
+                    break;
                 }
 
                 var onFlipHideComplete = function() {
-                    var trapScroll = _trapScrollLoc(childId);
                     wrapped.insertBefore(innerContainer);
                     $ax.visibility.SetIdVisible(childId, false);
 
                     innerContainer.remove();
-                    trapScroll();
 
                     onComplete();
                 };
@@ -9666,10 +9619,10 @@ $axure.internal(function($ax) {
                 });
 
                 if(preserveScroll) _tryResumeScrollForDP(childId);
-                _setRotateTransformation(innerContainer, flipdegree, containerDiv, onFlipHideComplete, options.duration, true);
+                requestAnimFrame(function () {
+                    _setRotateTransformation(innerContainer, flipdegree, containerDiv, onFlipHideComplete, options.duration);
+                });
             }
-
-            trapScroll();
         } else {
             // Because the move is gonna fire on annotation and ref too, need to update complete total
             completeTotal = $addAll(visibleWrapped, childId).length;
@@ -9680,9 +9633,8 @@ $axure.internal(function($ax) {
                 var lefts = [];
                 for(var i = 0; i < visibleWrapped.length; i++) {
                     var currWrapped = $(visibleWrapped[i]);
-                    
-                    tops.push(fixAuto(currWrapped, 'top'));
-                    lefts.push(fixAuto(currWrapped, 'left'));
+                    tops.push(currWrapped.css('top'));
+                    lefts.push(currWrapped.css('left'));
                 }
 
                 var onOutComplete = function () {
@@ -9690,7 +9642,7 @@ $axure.internal(function($ax) {
                     $ax.visibility.SetIdVisible(childId, false);
                     for(i = 0; i < visibleWrapped.length; i++) {
                         currWrapped = $(visibleWrapped[i]);
-                        $ax.visibility.SetVisible(currWrapped[0], false);
+                        $ax.visibility.SetIdVisible(currWrapped.attr('id'), false);
                         currWrapped.css('top', tops[i]);
                         currWrapped.css('left', lefts[i]);
                     }
@@ -9706,21 +9658,14 @@ $axure.internal(function($ax) {
         }
     };
 
-    // IE/Safari are giving auto here instead of calculating to for us. May need to calculate this eventually, but for now we can assume auto === 0px for the edge case found
-    var fixAuto = function (jobj, prop) {
-        var val = jobj.css(prop);
-        return val == 'auto' ? '0px' : val;
-    };
-
-    var _getRotateString = function (y, neg, showFlipBack) {
-        // y means flip on y axis, or left/right, neg means flipping it left/down, and show back is for set panel state
-        //  and will show the back of the widget (transparent) for the first half of a show, or second half of a hide.
-        return 'rotate' + (y ? 'Y' : 'X') + '(' + (neg ? '-' : '') + (showFlipBack ? 180 : IE ? 91 : 90) + 'deg)';
-    }
-
     var _updateChildAlignment = function(childId) {
-        var descendants = $jobj(childId).find('.text');
-        for(var i = 0; i < descendants.length; i++) $ax.style.updateTextAlignmentForVisibility(descendants[i].id);
+        var descendants = $jobj(childId).find('*');
+        for(var i = 0; i < descendants.length; i++) {
+            var decendantId = descendants[i].id;
+            // This check is probably redundant? UpdateTextAlignment should ignore any text objects that haven't set the vAlign yet.
+            if($ax.getTypeFromElementId(decendantId) != 'richTextPanel') continue;
+            $ax.style.updateTextAlignmentForVisibility(decendantId);
+        }
     };
 
     var _wrappedChildren = function (child) {
@@ -9731,33 +9676,20 @@ $axure.internal(function($ax) {
         //return $(valid);
     };
 
-    var requestAnimationFrame = window.requestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame || window.msRequestAnimationFrame ||
-        function (callback) {
-            window.setTimeout(callback, 1000 / 60);
-        };
-
-    var _setRotateTransformation = function(elementsToSet, transformValue, elementParent, flipCompleteCallback, flipDurationMs, useAnimationFrame) {
+    var _setRotateTransformation = function(elementsToSet, transformValue, elementParent, flipCompleteCallback, flipDurationMs) {
         if(flipCompleteCallback) {
             //here we didn't use 'transitionend' event to fire callback
             //when show/hide on one element, changing transition property will stop the event from firing
             window.setTimeout(flipCompleteCallback, flipDurationMs);
         }
 
-        var trasformCss = {
+        elementsToSet.css({
             '-webkit-transform': transformValue,
             '-moz-transform': transformValue,
             '-ms-transform': transformValue,
             '-o-transform': transformValue,
             'transform': transformValue
-        };
-
-        if(useAnimationFrame) {
-            requestAnimationFrame(function() {
-                elementsToSet.css(trasformCss);
-            });
-        } else elementsToSet.css(trasformCss);
+        });
 
         //when deal with dynamic panel, we need to set it's parent's overflow to visible to have the 3d effect
         //NOTE: we need to set this back when both flips finishes in DP, to prevents one animation finished first and set this back
@@ -9800,7 +9732,7 @@ $axure.internal(function($ax) {
         //pin to browser
         $ax.dynamicPanelManager.adjustFixed(id, oldState.width(), oldState.height(), state.width(), state.height());
 
-        _bringPanelStateToFront(id, stateId, oldStateId, easingIn == 'none' || durationIn == '0');
+        _bringPanelStateToFront(id, stateId, oldStateId);
 
         var fitToContent = $ax.dynamicPanelManager.isIdFitToContent(id);
         var resized = false;
@@ -9816,7 +9748,7 @@ $axure.internal(function($ax) {
             //move this call from _setVisibility() for animate out.
             //Because this will make the order of dp divs consistence: the showing panel is always in front after both animation finished
             //tested in the cases where one panel is out/show slower/faster/same time/instantly. 
-            _bringPanelStateToFront(id, stateId, oldStateId, false);
+            _bringPanelStateToFront(id, stateId, oldStateId);
 
             if (window.modifiedDynamicPanleParentOverflowProp) {
                 var parent = id ? $jobj(id) : child.parent();
@@ -9846,8 +9778,7 @@ $axure.internal(function($ax) {
             settingChild: true,
             size: movement,
             //cull for 
-            cull: easingOut == 'none' || state.children().length == 0 ? oldState : state,
-            showFlipBack: true
+            cull: easingOut == 'none' || state.children().length == 0 ? oldState : state
         });
 
         _setVisibility(id, stateId, {
@@ -9862,8 +9793,7 @@ $axure.internal(function($ax) {
             },
             settingChild: true,
             //size for offset
-            size: movement,
-            showFlipBack: true
+            size: movement
         });
 
         if(show) $ax.event.raiseSyntheticEvent(id, 'onShow');
@@ -9891,7 +9821,7 @@ $axure.internal(function($ax) {
             }
 
             var container = $('<div></div>');
-            container.attr('id', ''); // Placeholder id, so we won't try to recurse the container until it is ready
+            container.attr('id', $ax.visibility.applyWidgetContainer(id));
             container.css(css);
             //container.append(jobj.children());
             jobj.append(container);
@@ -9957,7 +9887,6 @@ $axure.internal(function($ax) {
                 }
                 _setCurrFocus(focus);
             }
-            container.attr('id', $ax.visibility.applyWidgetContainer(id)); // Setting the correct final id for the container
             trapScroll();
         }
     };
@@ -10238,8 +10167,8 @@ $axure.internal(function($ax) {
 
         for(var i = 0; i < jobj.length; i++) {
             var child = $(jobj[i]);
-            var oldTop = $ax.getNumFromPx(fixAuto(child, 'top'));
-            var oldLeft = $ax.getNumFromPx(fixAuto(child, 'left'));
+            var oldTop = $ax.getNumFromPx(child.css('top'));
+            var oldLeft = $ax.getNumFromPx(child.css('left'));
             if (directionIn == "right") {
                 child.css('left', oldLeft - width + 'px');
             } else if(directionIn == "left") {
@@ -10252,7 +10181,7 @@ $axure.internal(function($ax) {
         }
 
         if (makePanelVisible) $ax.visibility.SetIdVisible(id, true);
-        for(i = 0; i < jobj.length; i++) $ax.visibility.SetVisible(jobj[i], true);
+        for(i = 0; i < jobj.length; i++) $ax.visibility.SetIdVisible($(jobj[i]).attr('id'), true);
 
         if(preserveScroll) _tryResumeScrollForDP(id);
         if(directionIn == "right") {
@@ -10276,14 +10205,13 @@ $axure.internal(function($ax) {
         return $ax.visibility.getRealChildren($jobj(id).children()).length;
     };
 
-    var _bringPanelStateToFront = function (dpId, stateId, oldStateId, oldInFront) {
+    var _bringPanelStateToFront = function (dpId, stateid, oldStateId) {
         var panel = $jobj(dpId);
-        var frontId = oldInFront ? oldStateId : stateId;
         if(containerCount[dpId]) {
-            frontId = $ax.visibility.applyWidgetContainer(frontId);
+            stateid = $ax.visibility.applyWidgetContainer(stateid);
             panel = $ax.visibility.applyWidgetContainer(dpId, true, false, true);
         }
-        $jobj(frontId).appendTo(panel);
+        $jobj(stateid).appendTo(panel);
         //when bring a panel to front, it will be focused, and the previous front panel should fire blur event if it's lastFocusedClickableSelector
         //ie(currently 11) and firefox(currently 34) doesn't fire blur event, this is the hack to fire it manually
         if((IE || FIREFOX) && window.lastFocusedClickable && $ax.event.getFocusableWidgetOrChildId(window.lastFocusedControl) == window.lastFocusedClickable.id) {
@@ -10419,33 +10347,31 @@ $axure.internal(function($ax) {
     var _adaptiveStyledWidgets = {};
 
     var _setLinkStyle = function(id, styleName) {
-        var parentId = $ax.GetParentIdFromLink(id);
-        var style = _computeAllOverrides(id, parentId, styleName, $ax.adaptive.currentViewId);
-
-        var textId = $ax.GetTextPanelId(parentId);
+        var textId = $ax.style.GetTextIdFromLink(id);
+        var style = _computeAllOverrides(id, textId, styleName, $ax.adaptive.currentViewId);
         if(!_originalTextCache[textId]) {
             $ax.style.CacheOriginalText(textId);
         }
         if($.isEmptyObject(style)) return;
 
-        var textCache = _originalTextCache[textId].styleCache;
+        var parentObjectCache = _originalTextCache[textId].styleCache;
 
         _transformTextWithVerticalAlignment(textId, function() {
             var cssProps = _getCssStyleProperties(style);
             $('#' + id).find('*').andSelf().each(function(index, element) {
-                element.setAttribute('style', textCache[element.id]);
+                element.setAttribute('style', parentObjectCache[element.id]);
                 _applyCssProps(element, cssProps);
             });
         });
     };
 
     var _resetLinkStyle = function(id) {
-        var textId = $ax.GetTextPanelId($ax.GetParentIdFromLink(id));
-        var textCache = _originalTextCache[textId].styleCache;
+        var textId = $ax.style.GetTextIdFromLink(id);
+        var parentObjectCache = _originalTextCache[textId].styleCache;
 
         _transformTextWithVerticalAlignment(textId, function() {
             $('#' + id).find('*').andSelf().each(function(index, element) {
-                element.style.cssText = textCache[element.id];
+                element.style.cssText = parentObjectCache[element.id];
             });
         });
         if($ax.event.mouseDownObjectId) {
@@ -10554,19 +10480,14 @@ $axure.internal(function($ax) {
         return false;
     };
 
-    $ax.style.SetWidgetMouseDown = function(id, value, checkMouseOver) {
+    $ax.style.SetWidgetMouseDown = function(id, value) {
         if($ax.style.IsWidgetDisabled(id)) return;
         if(!_widgetHasState(id, MOUSE_DOWN)) return;
 
-        //if set to value is true, it's mousedown, if check mouseover is true,
-        //check if element is currently mouseover and has mouseover state before setting mouseover
-        if(value) var state = MOUSE_DOWN;
-        else if(!checkMouseOver || $ax.event.mouseOverIds.indexOf(id) !== -1 && _widgetHasState(id, MOUSE_OVER)) state = MOUSE_OVER;
-        else state = NORMAL;
-
-        var mouseState = _generateMouseState(id, state, $ax.style.IsWidgetSelected(id));
-        _applyImageAndTextJson(id, mouseState);
-        _updateElementIdImageStyle(id, mouseState);
+        //    ApplyImageAndTextJson(id, value ? 'mouseDown' : !$.isEmptyObject(GetStyleForState(id, null, 'mouseOver')) ? 'mouseOver' : 'normal');
+        var state = _generateMouseState(id, value ? MOUSE_DOWN : MOUSE_OVER, $ax.style.IsWidgetSelected(id));
+        _applyImageAndTextJson(id, state);
+        _updateElementIdImageStyle(id, state);
     };
 
     var _generateMouseState = function(id, mouseState, selected) {
@@ -10841,13 +10762,60 @@ $axure.internal(function($ax) {
         return 'rgba(' + red + ',' + green + ',' + blue + ',' + alpha + ')';
     };
 
+    //function $ax.style.GetTextIdFromShape(id) {
+    //    return $.grep(
+    //        $('#' + id).children().map(function (i, obj) { return obj.id; }), // all the child ids
+    //        function (item) { return item.indexOf(id) < 0; })[0]; // that are not similar to the parent
+    //}
+
+    var _getButtonShapeId = function(id) {
+        var obj = $obj(id);
+        return $ax.public.fn.IsTreeNodeObject(obj.type) ? $ax.getElementIdFromPath([obj.buttonShapeId], { relativeTo: id }) : id;
+    };
+
+    var _getButtonShape = function(id) {
+        var obj = $obj(id);
+
+        // some treeNodeObjects don't have button shapes
+        return $jobj($ax.public.fn.IsTreeNodeObject(obj.type) && obj.buttonShapeId ? $ax.getElementIdFromPath([obj.buttonShapeId], { relativeTo: id }) : id);
+    };
+
+    var _getTextIdFromShape = $ax.style.GetTextIdFromShape = function(id) {
+        return _getButtonShape(id).find('.text').attr('id');
+    };
+
+    $ax.style.GetTextIdFromLink = function(id) {
+        return $jobj(id).parentsUntil('.text').parent().attr('id');
+    };
+
+    var _getShapeIdFromText = $ax.style.GetShapeIdFromText = function(id) {
+        if(!id) return undefined; // this is to prevent an infinite loop.
+
+        var current = document.getElementById(id);
+        if(!current) return undefined;
+        current = current.parentElement;
+        while(current && current.tagName != 'BODY') {
+            var currentId = current.id;
+            if(currentId && currentId != 'base') return $ax.visibility.getWidgetFromContainer(currentId);
+            current = current.parentElement;
+        }
+
+        return undefined;
+    };
+
+    $ax.style.GetImageIdFromShape = function(id) {
+        var image = _getButtonShape(id).find('img[id$=img]');
+        if(!image.length) image = $jobj(id).find('img[id$=image_sketch]');
+        return image.attr('id');
+    };
+
     var _applyImageAndTextJson = function(id, event) {
-        var textId = $ax.GetTextPanelId(id, true);
-        if(textId) _resetTextJson(id, textId);
+        var textId = $ax.style.GetTextIdFromShape(id);
+        _resetTextJson(id, textId);
 
         // This should never be the case
         //if(event != '') {
-        var imgQuery = $jobj($ax.GetImageIdFromShape(id));
+        var imgQuery = $jobj($ax.style.GetImageIdFromShape(id));
         var e = imgQuery.data('events');
         if(e && e[event]) imgQuery.trigger(event);
 
@@ -11017,13 +10985,11 @@ $axure.internal(function($ax) {
     $ax.style.initialize = _initialize;
 
     var _initTextAlignment = function(elementId) {
-        var textId = $ax.GetTextPanelId(elementId);
-        if(textId) {
-            _storeIdToAlignProps(textId);
-            // now handle vertical alignment
-            if(_getObjVisible(textId)) {
-                _setTextAlignment(textId, _idToAlignProps[textId], false);
-            }
+        var textId = _getTextIdFromShape(elementId);
+        _storeIdToAlignProps(textId);
+        // now handle vertical alignment
+        if(_getObjVisible(textId)) {
+            _setTextAlignment(textId, _idToAlignProps[textId], false);
         }
     };
 
@@ -11037,7 +11003,7 @@ $axure.internal(function($ax) {
     };
 
     var _storeIdToAlignProps = function(textId) {
-        var shapeId = $ax.GetShapeIdFromText(textId);
+        var shapeId = _getShapeIdFromText(textId);
         var shapeObj = $obj(shapeId);
         var state = _generateState(shapeId);
 
@@ -11072,7 +11038,7 @@ $axure.internal(function($ax) {
                     }
                 }
             } else {
-                var imgQuery = $jobj($ax.GetImageIdFromShape(id));
+                var imgQuery = $jobj($ax.style.GetImageIdFromShape(id));
                 var idQuery = $jobj(id);
                 //it is hard to tell if setting the image or the class first causing less flashing when adding shadows.
                 imgQuery.attr('src', imgUrl);
@@ -11169,8 +11135,10 @@ $axure.internal(function($ax) {
         return element && (element.offsetWidth || element.offsetHeight);
     };
 
-    var _setTextAlignment = function(textId, alignProps, updateProps) {
-        if(updateProps) _storeIdToAlignProps(textId);
+    var _setTextAlignment = function (textId, alignProps, updateProps) {
+        if(updateProps) {
+            _storeIdToAlignProps(textId);
+        }
         if(!alignProps) return;
 
         var vAlign = alignProps.vAlign;
@@ -11185,6 +11153,7 @@ $axure.internal(function($ax) {
         var rightParam = 1.0;
 
         var textObj = $jobj(textId);
+        var textHeight = _getRtfElementHeight(textObj[0]);
         var textObjParent = textObj.offsetParent();
         var parentId = textObjParent.attr('id');
         var isConnector = false;
@@ -11192,15 +11161,15 @@ $axure.internal(function($ax) {
             parentId = $ax.visibility.getWidgetFromContainer(textObjParent.attr('id'));
             textObjParent = $jobj(parentId);
             var parentObj = $obj(parentId);
-            if(parentObj['bottomTextPadding']) bottomParam = parentObj['bottomTextPadding'];
-            if(parentObj['topTextPadding']) topParam = parentObj['topTextPadding'];
-            if(parentObj['leftTextPadding']) leftParam = parentObj['leftTextPadding'];
-            if(parentObj['rightTextPadding']) rightParam = parentObj['rightTextPadding'];
+            if (parentObj['bottomTextPadding']) bottomParam = parentObj['bottomTextPadding'];
+            if (parentObj['topTextPadding']) topParam = parentObj['topTextPadding'];
+            if (parentObj['leftTextPadding']) leftParam = parentObj['leftTextPadding'];
+            if (parentObj['rightTextPadding']) rightParam = parentObj['rightTextPadding'];
 
             // smart shapes are mutually exclusive from compound vectors.
             isConnector = parentObj.type == $ax.constants.CONNECTOR_TYPE;
         }
-        if(isConnector) return;
+        if (isConnector) return;
 
         var axTextObjectParent = $ax('#' + textObjParent.attr('id'));
 
@@ -11215,7 +11184,7 @@ $axure.internal(function($ax) {
         var height = axTextObjectParent.height();
 
         // If text rotated need to handle getting the correct width for text based on bounding rect of rotated parent.
-        var boundingRotation = -$ax.move.getRotationDegreeFromElement(textObj[0]);
+        var boundingRotation = -$ax.move.getRotationDegree(textId);
         var boundingParent = $axure.fn.getBoundingSizeForRotate(width, height, boundingRotation);
         var extraLeftPadding = (width - boundingParent.width) / 2;
         width = boundingParent.width;
@@ -11223,26 +11192,22 @@ $axure.internal(function($ax) {
         relativeTop = height * topParam;
         var containerHeight = height * bottomParam - relativeTop;
 
+        if (vAlign == "middle") newTop = _roundToEven(relativeTop + (containerHeight - textHeight + paddingTop - paddingBottom) / 2);
+        else if (vAlign == "bottom") newTop = _roundToEven(relativeTop + containerHeight - textHeight - paddingBottom);
+        else newTop = _roundToEven(paddingTop + relativeTop);
 
         newLeft = paddingLeft + extraLeftPadding + width * leftParam;
 
         var newWidth = width * (rightParam - leftParam) - paddingLeft - paddingRight;
+        var vertChange = oldTop != newTop;
+        if (vertChange) textObj.css('top', newTop + 'px');
 
         var horizChange = newWidth != oldWidth || newLeft != oldLeft;
-        if(horizChange) {
+        if (horizChange) {
             textObj.css('left', newLeft);
             textObj.width(newWidth);
         }
-
-        var textHeight = _getRtfElementHeight(textObj[0]);
-
-        if(vAlign == "middle") newTop = _roundToEven(relativeTop + (containerHeight - textHeight + paddingTop - paddingBottom) / 2);
-        else if(vAlign == "bottom") newTop = _roundToEven(relativeTop + containerHeight - textHeight - paddingBottom);
-        else newTop = _roundToEven(paddingTop + relativeTop);
-        var vertChange = oldTop != newTop;
-        if(vertChange) textObj.css('top', newTop + 'px');
-
-        if((vertChange || horizChange)) _updateTransformOrigin(textId);
+        if ((vertChange || horizChange)) _updateTransformOrigin(textId);
     };
 
     var _updateTransformOrigin = function(textId) {
@@ -11285,8 +11250,10 @@ $axure.internal(function($ax) {
         for(var shapeId in _adaptiveStyledWidgets) {
             var repeaterId = $ax.getParentRepeaterFromScriptId(shapeId);
             if(repeaterId) continue;
-            var elementId = $ax.GetButtonShapeId(shapeId);
-            if(elementId) _applyImageAndTextJson(elementId, $ax.style.generateState(elementId));
+            var elementId = _getButtonShapeId(shapeId);
+            if(elementId) {
+                _applyImageAndTextJson(elementId, $ax.style.generateState(elementId));
+            }
         }
 
         _adaptiveStyledWidgets = {};
@@ -11295,7 +11262,7 @@ $axure.internal(function($ax) {
     $ax.style.setAdaptiveStyle = function(shapeId, style) {
         _adaptiveStyledWidgets[$ax.repeater.getScriptIdFromElementId(shapeId)] = style;
 
-        var textId = $ax.GetTextPanelId(shapeId);
+        var textId = $ax.style.GetTextIdFromShape(shapeId);
         if(textId) _applyTextStyle(textId, style);
 
         $ax.placeholderManager.refreshPlaceholder(shapeId);
@@ -11460,7 +11427,7 @@ $axure.internal(function($ax) {
                 styleCache: styleCache
             };
             if(hasRichTextBeenSet) {
-                var shapeId = $ax.GetShapeIdFromText(textId);
+                var shapeId = _getShapeIdFromText(textId);
                 _shapesWithSetRichText[shapeId] = true;
             }
         }
@@ -12031,9 +11998,6 @@ $axure.internal(function($ax) {
 //            if($ax.visibility.IsVisible(submenuElement) && submenuElement.style.display !== 'none') return;
             $ax.visibility.SetIdVisible(subMenuId, true);
             $ax.legacy.BringToFront(subMenuId);
-            $submenudiv.find('.menu_item').each(function() {
-                $ax.style.updateTextAlignmentForVisibility($ax.GetTextPanelId($(this).attr('id')));
-            });
             _fireEventForSubmenu(subMenuId, "onShow");
 
         }).mouseleave(function (e) {
@@ -12229,18 +12193,16 @@ $axure.internal(function($ax) {
         function pushAnnotation(dObj, elementId) {
             var ann = dObj.annotation;
             if(ann) {
-                ann = $ax.deepCopy(ann);
                 ann["id"] = elementId;
                 ann["label"] = dObj.label + " (" + dObj.friendlyType + ")";
                 anns.push(ann);
             }
 
-            if(dObj.type === 'repeater' && dObj.objects) {
-                //if it's repeater, save the id as repeaterId@scriptId
-                for(var i = 0, len = dObj.objects.length; i < len; i++) {
-                    var child = dObj.objects[i];
-                    var scriptId = $ax.getScriptIdFromPath([child.id], elementId);
-                    pushAnnotation(child, elementId + '@' + scriptId);
+            if(dObj.type == 'repeater') {
+                if(dObj.objects) {
+                    for(var i = 0, len = dObj.objects.length; i < len; i++) {
+                        pushAnnotation(dObj.objects[i]);
+                    }
                 }
             }
         }
@@ -12668,48 +12630,18 @@ $axure.internal(function ($ax) {
         }
     });
 
-    var _toggleSelectWidgetNoteForRepeater = function (repeaterId, scriptId, select) {
-        var itemIds = $ax.getItemIdsForRepeater(repeaterId);
-
-        for(var i = 0; i < itemIds.length; i++) {
-            var itemId = itemIds[i];
-            var elementId = $ax.repeater.createElementId(scriptId, itemId);
-            if(select) $('#' + elementId).addClass('widgetNoteSelected');
-            else $('#' + elementId).removeClass('widgetNoteSelected');
-        }
-    }
-
     var lastSelectedWidgetNote;
     $ax.messageCenter.addMessageListener(function (message, data) {
         //If annotation toggle message received from sitemap, toggle footnotes
         if(message == 'toggleSelectWidgetNote') {
-            var dataSplit = data.split('@');
-
             if(lastSelectedWidgetNote == data) {
-                if(dataSplit.length === 2) {
-                    _toggleSelectWidgetNoteForRepeater(dataSplit[0], dataSplit[1], false);
-                } else {
-                    $('#' + lastSelectedWidgetNote).removeClass('widgetNoteSelected');
-                }
+                $('#' + lastSelectedWidgetNote).removeClass('widgetNoteSelected');
                 lastSelectedWidgetNote = null;
                 return;
             }
 
-            if(lastSelectedWidgetNote) {
-                var lastDataSplit = lastSelectedWidgetNote.split('@');
-                if(lastDataSplit.length === 2) {
-                    _toggleSelectWidgetNoteForRepeater(lastDataSplit[0], lastDataSplit[1], false);
-                } else {
-                   $('#' + lastSelectedWidgetNote).removeClass('widgetNoteSelected');
-                }
-            }
-
-            if(dataSplit.length > 1) {
-                _toggleSelectWidgetNoteForRepeater(dataSplit[0], dataSplit[1], true);
-            } else {
-                $('#' + data).addClass('widgetNoteSelected');
-            }
-
+            if(lastSelectedWidgetNote) $('#' + lastSelectedWidgetNote).removeClass('widgetNoteSelected');
+            $('#' + data).addClass('widgetNoteSelected');
             lastSelectedWidgetNote = data;
         }
     });
@@ -12726,39 +12658,17 @@ $axure.internal(function ($ax) {
         if(ignoreUnset && !highlightEnabled) return;
 
         var pulsateClassName = 'legacyPulsateBorder';
-        //Determine if the widget has a defined userTriggeredEventName specified in the array above
-        var _isInteractive = function(diagramObject) {
-            if(diagramObject && diagramObject.interactionMap) {
-                for(var index in userTriggeredEventNames) {
-                    if(diagramObject.interactionMap[userTriggeredEventNames[index]]) return true;
-                }
-            }
-            return false;
-        };
-
-        //Traverse through parent layers (if any) of an element and see if any have a defined userTriggeredEventName
-        var _findMatchInParent = function(id) {
-            var parents = $ax('#' + id).getParents(true, ['layer'])[0];
-            for(var i in parents) {
-                var parentId = parents[i];
-                var parentObj = $ax.getObjectFromScriptId(parentId);
-                if(_isInteractive(parentObj)) return true;
-            }
-            return false;
-        };
 
         //Find all widgets with a defined userTriggeredEventName specified in the array above
-        var $matchingElements = query.filter(function (obj, id) {
-
-            //This prevents the top left corner of the page from highlighting with everything else
-            if($ax.public.fn.IsLayer(obj.type)) return false;
-
-            if(_isInteractive(obj)) return true;
-            else if($ax.public.fn.IsVector(obj.type) && obj.referencePageUrl) return true;
-
-            //Last check on the object's parent layer(s), if a layer has a defined userTriggeredEventName
-            //then we shall highlight each member of that layer TODO This is a design decision and is subject to change
-            return _findMatchInParent(id);
+        var $matchingElements = query.filter(function(obj) {
+            if(obj.interactionMap) {
+                for(var index in userTriggeredEventNames) {
+                    if(obj.interactionMap[userTriggeredEventNames[index]]) return true;
+                }
+            } else if ($ax.public.fn.IsVector(obj.type) && obj.referencePageUrl) {
+                return true;
+            }
+            return false;
         }).$();
 
         var isHighlighted = $matchingElements.is('.' + pulsateClassName);
@@ -12923,13 +12833,7 @@ $axure.internal(function($ax) {
             tempBoundingRect.width = Number(element.getAttribute('WidgetWidth'));
             tempBoundingRect.height = Number(element.getAttribute('WidgetHeight'));
         } else {
-            var boundingElement = element;
-            if($ax.dynamicPanelManager.isIdFitToContent(widgetId)) {
-                var stateId = $ax.visibility.GetPanelState(widgetId);
-                if(stateId != '') boundingElement = document.getElementById(stateId);
-            }
-            tempBoundingRect = boundingElement.getBoundingClientRect();
-
+            tempBoundingRect = element.getBoundingClientRect();
             var jElement = $(element);
             position = jElement.position();
             if(jElement.css('position') == 'fixed') {
@@ -13140,37 +13044,5 @@ $axure.internal(function($ax) {
             '-o-transform': transformString,
             'transform': transformString
         };
-    }
-
-    $ax.public.fn.getCornersFromComponent = function (id) {
-        var element = document.getElementById(id);
-        var matrix = $ax.public.fn.transformFromElement(element);
-        var currentMatrix = { m11: matrix[0], m21: matrix[1], m12: matrix[2], m22: matrix[3], tx: matrix[4], ty: matrix[5] };
-        var dimensions = {};
-        var axObj = $ax('#' + id);
-        dimensions.left = axObj.left(true);
-        dimensions.top = axObj.top(true);
-        var size = axObj.size();
-        dimensions.width = size.width;
-        dimensions.height = size.height;
-        //var transformMatrix1 = { m11: 1, m12: 0, m21: 0, m22: 1, tx: -invariant.x, ty: -invariant.y };
-        //var transformMatrix2 = { m11: 1, m12: 0, m21: 0, m22: 1, tx: 500, ty: 500 };
-
-        var halfWidth = dimensions.width * 0.5;
-        var halfHeight = dimensions.height * 0.5;
-        //var preTransformTopLeft = { x: -halfWidth, y: -halfHeight };
-        //var preTransformBottomLeft = { x: -halfWidth, y: halfHeight };
-        var preTransformTopRight = { x: halfWidth, y: -halfHeight };
-        var preTransformBottomRight = { x: halfWidth, y: halfHeight };
-
-        return {
-            //relativeTopLeft: $ax.public.fn.matrixMultiply(currentMatrix, preTransformTopLeft),
-            //relativeBottomLeft: $ax.public.fn.matrixMultiply(currentMatrix, preTransformBottomLeft),
-            relativeTopRight: $ax.public.fn.matrixMultiply(currentMatrix, preTransformTopRight),
-            relativeBottomRight: $ax.public.fn.matrixMultiply(currentMatrix, preTransformBottomRight),
-            centerPoint: { x: dimensions.left + halfWidth, y: dimensions.top + halfHeight }
-            //originalDimensions: dimensions,
-            //transformShift: { x: matrix[4], y: matrix[5] }
-        }
     }
 });
