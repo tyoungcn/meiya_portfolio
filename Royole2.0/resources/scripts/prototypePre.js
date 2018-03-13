@@ -1,4 +1,4 @@
-﻿// 8.0.0.3338. Generated 4/28/2017 12:22:57 AM UTC
+﻿// 8.0.0.3355. Generated 8/24/2017 4:38:58 AM UTC
 
 //***** axQuery.js *****//
 $axure = function(query) {
@@ -192,7 +192,8 @@ $axure = function(query) {
 
         var getParent = function(elementId) {
             var containerIndex = elementId.indexOf('_container');
-            if(containerIndex != -1) elementId = elementId.substring(0, containerIndex);
+            if(containerIndex !== -1) elementId = elementId.substring(0, containerIndex);
+            if(elementId.indexOf('_text') !== -1) elementId = $ax.GetShapeIdFromText(elementId);
 
             // Check repeater item before layer, because repeater item detects it's parent layer, but wants to go directly to it's repeater first.
             // if repeater item, then just return repeater
@@ -359,6 +360,9 @@ $axure = function(query) {
     };
 
     var _fixForBasicLinks = function(query) {
+        var hasBasicLinks = query.filter('.basiclink').length > 0;
+        if(!hasBasicLinks) return query;
+
         var retval = $();
         for(var i = 0; i < query.length; i++) {
             var child = $(query[i]);
@@ -627,19 +631,18 @@ $axure.internal(function($ax) {
 
     var _annotationManager = $ax.annotation = {};
 
-    var _updateLinkLocations = $ax.annotation.updateLinkLocations = function(textId) {
-        var diagramObject = $ax.getObjectFromElementId(textId);
-        var rotation = (diagramObject && diagramObject.style.rotation);
-        var shapeId = $ax.style.GetShapeIdFromText(textId);
+    var _updateLinkLocations = $ax.annotation.updateLinkLocations = function(elementId) {
+        var textId = $ax.GetTextPanelId(elementId);
+        if(!textId) return;
 
-        //we have to do this because webkit reports the post-transform position but when you set
-        //positions it's pre-transform
+        var rotation = $ax.getObjectFromElementId(elementId).style.textRotation;
+        //we have to do this because webkit reports the post-transform position but when you set positions it's pre-transform
         if(WEBKIT && rotation) {
             //we can dynamiclly rotate a widget now, show need to remember the transform rather than just remove it
             //here jquery.css will return 'none' if element is display none
-            var oldShapeTransform = document.getElementById(shapeId).style['-webkit-transform'];
+            var oldShapeTransform = document.getElementById(elementId).style['-webkit-transform'];
             var oldTextTransform = document.getElementById(textId).style['-webkit-transform'];
-            $('#' + shapeId).css('-webkit-transform', 'scale(1)');
+            $('#' + elementId).css('-webkit-transform', 'scale(1)');
             $('#' + textId).css('-webkit-transform', 'scale(1)');
         }
 
@@ -655,7 +658,7 @@ $axure.internal(function($ax) {
 
         //undo the transform reset
         if(WEBKIT && rotation) {
-            $('#' + shapeId).css('-webkit-transform', oldShapeTransform || '');
+            $('#' + elementId).css('-webkit-transform', oldShapeTransform || '');
             $('#' + textId).css('-webkit-transform', oldTextTransform || '');
         }
     };
@@ -732,7 +735,7 @@ $axure.internal(function($ax) {
             if(!dObj.annotation) return;
 
             if(dObj.type == 'hyperlink') {
-                var textId = $ax.style.GetTextIdFromLink(elementId);
+                var textId = $ax.GetParentIdFromLink(elementId);
 
                 var elementIdQuery = $('#' + elementId);
                 elementIdQuery.after("<span id='" + elementId + "_ann'>&#8203;</span>");
@@ -749,7 +752,7 @@ $axure.internal(function($ax) {
                     return false;
                 });
 
-                _updateLinkLocations(textId);
+                _updateLinkLocations(elementId);
             } else {
                 if($ax.document.configuration.useLabels) {
                     var label = $('#' + elementId).attr("data-label");
@@ -796,6 +799,26 @@ $axure.internal(function($ax) {
         });
     });
 
+    //adjust annotation location to a element's top right corner
+    $ax.annotation.adjustIconLocation = function(id) {
+        var ann = document.getElementById(id + "_ann");
+        if(ann) {
+            var corners = $ax.public.fn.getCornersFromComponent(id);
+            var newTopRight = $ax.public.fn.vectorPlus(corners.relativeTopRight, corners.centerPoint);
+            //note size is 14x8, this is how rp calculated it as well
+            ann.style.left = (newTopRight.x - 7) + "px";
+            ann.style.top = (newTopRight.y - 4) + "px";
+        }
+
+        var ref = document.getElementById(id + "_ref");
+        if(ref) {
+            if(!corners) corners = $ax.public.fn.getCornersFromComponent(id);
+            var newBottomRight = $ax.public.fn.vectorPlus(corners.relativeBottomRight, corners.centerPoint);
+
+            ref.style.left = (newBottomRight.x - 8) + 'px';
+            ref.style.top = (newBottomRight.y - 10) + 'px';
+        }
+    }
 });
 //***** axQuery.std.js *****//
 // ******* AxQuery Plugins ******** //
@@ -830,6 +853,9 @@ $axure.internal(function($ax) {
     $ax.constants.CONNECTOR_TYPE = 'connector';
     $ax.constants.ALL_TYPE = '*';
 
+    $ax.constants.TEXT_TYPE = 'richTextPanel';
+    $ax.constants.LINK_TYPE = 'hyperlink';
+
     $ax.public.fn.IsTable = function (type) { return type == $ax.constants.TABLE_TYPE; }
     $ax.public.fn.IsMenuObject = function (type) { return type == $ax.constants.MENU_OBJECT_TYPE; }
     $ax.public.fn.IsMaster = function (type) { return type == $ax.constants.MASTER_TYPE; }
@@ -853,6 +879,7 @@ $axure.internal(function($ax) {
     $ax.public.fn.IsTableCell = function (type) { return type == $ax.constants.TABLE_CELL_TYPE; }
     $ax.public.fn.IsInlineFrame = function (type) { return type == $ax.constants.INLINE_FRAME_TYPE; }
     $ax.public.fn.IsConnector = function (type) { return type == $ax.constants.CONNECTOR_TYPE; }
+    $ax.public.fn.IsContainer = function (type) { return type== $ax.constants.VECTOR_SHAPE_TYPE || type == $ax.constants.TABLE_TYPE || type == $ax.constants.MENU_OBJECT_TYPE || type == $ax.constants.TREE_NODE_OBJECT_TYPE; }
 
     var PLAIN_TEXT_TYPES = [$ax.constants.TEXT_BOX_TYPE, $ax.constants.TEXT_AREA_TYPE, $ax.constants.LIST_BOX_TYPE,
         $ax.constants.COMBO_BOX_TYPE, $ax.constants.CHECK_BOX_TYPE, $ax.constants.RADIO_BUTTON_TYPE, $ax.constants.BUTTON_TYPE];
@@ -863,6 +890,17 @@ $axure.internal(function($ax) {
         $ax.constants.INLINE_FRAME_TYPE, $ax.constants.LAYER_TYPE, $ax.constants.LIST_BOX_TYPE, $ax.constants.COMBO_BOX_TYPE,
         $ax.constants.VECTOR_SHAPE_TYPE, $ax.constants.TEXT_AREA_TYPE, $ax.constants.TEXT_BOX_TYPE, $ax.constants.SNAPSHOT_TYPE
     ];
+
+    $ax.public.fn.SupportsRichText = function() {
+        var obj = $obj(this.getElementIds()[0]);
+        // Catch root tree nodes as they are not supported.
+        if(obj.type == $ax.constants.TREE_NODE_OBJECT_TYPE) return obj.friendlyType == 'Tree Node';
+        // Do the same for tree node icons maybe?
+
+        return $.inArray(obj.type, SUPPORTS_RICH_TEXT_TYPES) != -1;
+    }
+    var SUPPORTS_RICH_TEXT_TYPES = [$ax.constants.CHECK_BOX_TYPE, $ax.constants.RADIO_BUTTON_TYPE,
+        $ax.constants.IMAGE_BOX_TYPE, $ax.constants.VECTOR_SHAPE_TYPE, $ax.constants.TABLE_CELL_TYPE, $ax.constants.CONNECTOR_TYPE];
 
     var _addJQueryFunction = function(name) {
         $ax.public.fn[name] = function() {
@@ -1112,11 +1150,9 @@ $axure.internal(function($ax) {
 
         var wasShown = $ax.visibility.IsIdVisible(elementId);
         var compress = options && options.showType == 'compress' && wasShown != value;
+        if (compress) $ax.dynamicPanelManager.compressToggle(elementId, options.vertical, value, options.compressEasing, options.compressDuration);
 
-        var compressed = false;
-        var onComplete = function() {
-            if(compress && !compressed) $ax.dynamicPanelManager.compressToggle(elementId, options.vertical, value, options.compressEasing, options.compressDuration);
-            compressed = true;
+        var onComplete = function () {
             $ax.dynamicPanelManager.fitParentPanel(elementId);
         };
         $ax.visibility.SetWidgetVisibility(elementId, {
@@ -1127,9 +1163,7 @@ $axure.internal(function($ax) {
             fire: true,
             onComplete: onComplete
         });
-        if(compress && !compressed) $ax.dynamicPanelManager.compressToggle(elementId, options.vertical, value, options.compressEasing, options.compressDuration);
-        compressed = true;
-
+        
         if(options && options.bringToFront) $ax.legacy.BringToFront(elementId);
     };
 
@@ -1229,7 +1263,7 @@ $axure.internal(function($ax) {
                 if (moveComplete) moveComplete();
             }
 
-            $ax.move.circularMove(elementId, degreeChange, { x: centerPointLeft, y: centerPointTop }, moveDelta, rotatableMove, resizeOffset, options, true, onComplete);
+            $ax.move.circularMove(elementId, degreeChange, { x: centerPointLeft, y: centerPointTop }, moveDelta, rotatableMove, resizeOffset, options, true, onComplete, doRotation);
             if(doRotation) $ax.move.rotate(elementId, degreeChange, options.easing, options.duration, false, true, function () { $ax.dynamicPanelManager.fitParentPanel(elementId); });
             else $ax.action.fireAnimationFromQueue(elementId, $ax.action.queueTypes.rotate);
         }
@@ -1279,12 +1313,12 @@ $axure.internal(function($ax) {
                 // No longer fitToContent, calculate additional styling that needs to be done.
                 $ax.dynamicPanelManager.setFitToContentCss(elementId, false, oldWidth, oldHeight);
 
-                if((obj.fixedHorizontal && obj.fixedHorizontal == 'center') || (obj.fixedVertical && obj.fixedVertical == 'middle')) {
+                if (query.css('position') == 'fixed' && ((obj.fixedHorizontal && obj.fixedHorizontal == 'center') || (obj.fixedVertical && obj.fixedVertical == 'middle'))) {
                     moves = true;
                     var loc = $ax.dynamicPanelManager.getFixedPosition(elementId, oldWidth, oldHeight, newLocationAndSizeCss.width, newLocationAndSizeCss.height);
                     if(loc) {
-                        if(loc[0] != 0 && !$ax.dynamicPanelManager.isPercentWidthPanel(obj)) newLocationAndSizeCss['margin-left'] = '+=' + loc[0];
-                        if(loc[1] != 0) newLocationAndSizeCss['margin-top'] = '+=' + loc[1];
+                        if (loc[0] != 0 && !$ax.dynamicPanelManager.isPercentWidthPanel(obj)) newLocationAndSizeCss['margin-left'] = '+=' + (Number(newLocationAndSizeCss['margin-left'].substr(2)) + loc[0]);
+                        if (loc[1] != 0) newLocationAndSizeCss['margin-top'] = '+=' + (Number(newLocationAndSizeCss['margin-top'].substr(2)) + loc[1]);
                     }
                 }
 
@@ -1304,7 +1338,7 @@ $axure.internal(function($ax) {
                 if(textChildren && textChildren.length != 0) {
                     var textDivId = textChildren.attr('id');
                     var textObj = $ax('#' + textDivId);
-                    var leftPadding = textObj.left();
+                    var leftPadding = textObj.left(true);
                     var rightPadding = oldWidth - leftPadding - textObj.width();
                     //greater or equal to 1px
                     var newTextWidth = Math.max(newLocationAndSizeCss.width - leftPadding - rightPadding, 1);
@@ -1325,6 +1359,7 @@ $axure.internal(function($ax) {
                     $ax.dynamicPanelManager.fitParentPanel(elementId);
                     completeAndFire(moves, elementId);
 
+                    $ax.annotation.adjustIconLocation(elementId);
                     $ax.event.raiseSyntheticEvent(elementId, 'onResize');
                 };
             }
@@ -1512,7 +1547,7 @@ $axure.internal(function($ax) {
 
         if(idQuery.is('div')) {
             var $rtfObj = idQuery.hasClass('text') ? idQuery : idQuery.find('.text');
-            if($rtfObj.length == 0) return undefined;
+            if($rtfObj.length == 0) return '';
 
             var textOut = '';
             $rtfObj.children('p').each(function(index) {
@@ -1871,7 +1906,10 @@ $axure.internal(function($ax) {
         }
 
         var firstIdObject = $jobj(firstId);
-        return { width: firstIdObject.outerWidth(), height: firstIdObject.outerHeight() };
+        var trap = _displayWidget($ax.repeater.removeSuffixFromElementId(firstId));
+        var size = { width: firstIdObject.outerWidth(), height: firstIdObject.outerHeight() };
+        trap();
+        return size;
     };
 
     $ax.public.fn.width = function() {
@@ -1943,7 +1981,7 @@ $axure.internal(function($ax) {
         var left = _getLoc(firstId, false, false, relative);
 
         // If you are absolute, unless your are a pinned panel...
-        if(relative || $obj(firstId).fixedVertical) return left;
+        if(relative || $obj(firstId) && $obj(firstId).fixedVertical) return left;
 
         // ... or you are in one...
         var parentPanels = $ax('#' + firstId).getParents(true, 'dynamicPanel')[0];
@@ -1964,6 +2002,8 @@ $axure.internal(function($ax) {
         var dim = vert ? 'height' : 'width';
 
         var obj = $jobj(id);
+        var strippedId = $ax.repeater.removeSuffixFromElementId(id);
+        var axObj = $obj(strippedId);
         var oldDisplay = obj.css('display');
         var displaySet = false;
         if(oldDisplay == 'none') {
@@ -1971,14 +2011,24 @@ $axure.internal(function($ax) {
             displaySet = true;
         }
         var loc = Math.NaN;
-        var rdo = $ax.getTypeFromElementId(id) == $ax.constants.REFERENCE_DIAGRAM_OBJECT_TYPE;
+        var rdo = axObj.type == $ax.constants.REFERENCE_DIAGRAM_OBJECT_TYPE;
 
         if (!rdo) loc = $ax.getNumFromPx(obj.css(prop));
 
         var fixed = _fixedOffset(id, vert);
         if(fixed.valid) loc = !vert && fixed.fullWidth ? 0 : fixed.offset;
         else if (!relative) {
-            var parents = $ax('#' + id).getParents(true, ['item', 'repeater', 'dynamicPanel', 'layer'])[0];
+            var parents = [];
+            var parObj = id.indexOf('text') != -1 ? axObj : axObj.parent; // When working with text id, parent widget is the ax obj we are dealing with, so that should be the first parent
+            while($ax.public.fn.IsContainer(parObj.type)) {
+                parents.push($ax.getScriptIdFromPath([parObj.id], strippedId));
+                parObj = parObj.parent;
+            }
+            var otherParents = $ax('#' + id).getParents(true, ['item', 'repeater', 'dynamicPanel', 'layer'])[0];
+            for(var i = 0; i < otherParents.length; i++) {
+                parents.push(otherParents[i]);
+            }
+
             for(var i = 0; i < parents.length; i++) {
                 var parentId = $ax.visibility.getWidgetFromContainer(parents[i]);
                 var parent = $ax.visibility.applyWidgetContainer(parentId, true);
@@ -1997,11 +2047,11 @@ $axure.internal(function($ax) {
         if (high) loc += obj[dim]();
 
         // Special Layer code
-        if ($ax.getTypeFromElementId(id) == 'layer') {
+        if (axObj.type == 'layer') {
             // If layer has a container, then use that. Otherwise must deal with children. Children can move in container after created, but ignoring for now.
             var container = $ax.visibility.applyWidgetContainer(id, true, true);
             if(container.length) loc += $ax.getNumFromPx(container.css(prop));
-            else loc += (_getChildLoc($obj(id).objs, vert, high, dim, true, id) || 0);
+            else loc += (_getChildLoc(axObj.objs, vert, high, dim, true, id) || 0);
         }
 
         if(displaySet) obj.css('display', oldDisplay);
@@ -2043,10 +2093,11 @@ $axure.internal(function($ax) {
 
     var _fixedOffset = function (id, vert) {
         var axObj = $obj(id);
+        //I think this is only for pinned panels? So why are we coming through here for rtps?
+        if(!axObj) return { valid: false };
+
         var dim = vert ? 'height' : 'width';
-        var vertKey = (vert ? 'Vertical' : 'Horizontal');
-        var key = 'fixed' + vertKey;
-        var alignment = axObj[key];
+        var alignment = axObj['fixed' + (vert ? 'Vertical' : 'Horizontal')];
         if(!alignment) return { valid: false };
         var loc = 0;
 
@@ -2116,10 +2167,12 @@ $axure.internal(function($ax) {
                     var diagram = diagramObject.diagrams[i];
                     objectArrayHelper(diagram.objects, diagram);
                 }
+            } else if($ax.public.fn.IsLayer(diagramObject.type)) {
+                var layerObjs = diagramObject.objs;
+                objectArrayHelper(layerObjs, parent);
             }
             if(diagramObject.objects) objectArrayHelper(diagramObject.objects, diagramObject);
         };
-
         objectArrayHelper(pageFragment.diagram.objects, pageFragment.diagram);
     };
 
@@ -2146,7 +2199,7 @@ $axure.internal(function($ax) {
 
     var _initializePageData;
     // ******* Dictionaries ******** //
-    (function () {
+    (function() {
         var scriptIdToParentLayer = {};
         var elementIdToObject = {};
         var scriptIdToObject = {};
@@ -2196,13 +2249,10 @@ $axure.internal(function($ax) {
                 if(scriptIds) scriptIds[scriptIds.length] = scriptId;
                 else repeaterIdToScriptIds[repeaterId] = [scriptId];
             };
-            var mapScriptIdToLayerId = function (obj, layerId, path) {
+            var mapScriptIdToLayerId = function(obj, layerId, path) {
                 var pathCopy = $ax.deepCopy(path);
                 pathCopy[path.length] = obj.id;
                 var scriptId = $ax.getScriptIdFromPath(pathCopy);
-                if ($ax.public.fn.IsLayer(obj.type)) {
-                    for(var i = 0; i < obj.objs.length; i++) mapScriptIdToLayerId(obj.objs[i], scriptId, path);
-                }
                 scriptIdToParentLayer[scriptId] = layerId;
             }
             var mapIdsToRepeaterAndLayer = function(path, objs, repeaterId) {
@@ -2215,18 +2265,19 @@ $axure.internal(function($ax) {
                     // Rdo have no element on page and are not mapped to the repeater
                     if(repeaterId) mapScriptIdToRepeaterId(scriptId, repeaterId);
 
-                    if ($ax.public.fn.IsDynamicPanel(obj.type)) {
+                    if($ax.public.fn.IsDynamicPanel(obj.type)) {
                         for(var j = 0; j < obj.diagrams.length; j++) mapIdsToRepeaterAndLayer(path, obj.diagrams[j].objects, repeaterId);
-                    } else if ($ax.public.fn.IsReferenceDiagramObject(obj.type)) {
+                    } else if($ax.public.fn.IsReferenceDiagramObject(obj.type)) {
                         mapIdsToRepeaterAndLayer(pathCopy, $ax.pageData.masters[obj.masterId].diagram.objects, repeaterId);
-                    } else if ($ax.public.fn.IsRepeater(obj.type)) {
+                    } else if($ax.public.fn.IsRepeater(obj.type)) {
                         mapScriptIdToRepeaterId(scriptId, scriptId);
                         mapIdsToRepeaterAndLayer(path, obj.objects, scriptId);
-                    } else if ($ax.public.fn.IsLayer(obj.type)) {
+                    } else if($ax.public.fn.IsLayer(obj.type)) {
                         var layerObjs = obj.objs;
                         for(var j = 0; j < layerObjs.length; j++) {
                             mapScriptIdToLayerId(layerObjs[j], scriptId, path);
                         }
+                        mapIdsToRepeaterAndLayer(path, layerObjs, repeaterId);
                     } else if(obj.objects && obj.objects.length) {
                         if(repeaterId) {
                             for(var j = 0; j < obj.objects.length; j++) {
@@ -2238,7 +2289,6 @@ $axure.internal(function($ax) {
             };
             mapIdsToRepeaterAndLayer([], $ax.pageData.page.diagram.objects);
         };
-
 
 
         $ax.getPathFromScriptId = function(scriptId) {
@@ -2288,15 +2338,15 @@ $axure.internal(function($ax) {
 
         var _getElementIdsFromPath = function(path, eventInfo) {
             var scriptId = _getScriptIdFromPath(path, eventInfo);
-            if (!scriptId) return [];
+            if(!scriptId) return [];
             // Don't need placed check hear. If unplaced, scriptId will be undefined and exit out before here.
             return $ax.getElementIdsFromEventAndScriptId(eventInfo, scriptId);
         };
         $ax.getElementIdsFromPath = _getElementIdsFromPath;
 
-        var _getElementIdFromPath = function (path, params) {
+        var _getElementIdFromPath = function(path, params) {
             var scriptId = _getScriptIdFromPath(path, params.relativeTo);
-            if (!scriptId) return scriptId;
+            if(!scriptId) return scriptId;
 
             var itemNum = params.itemNum;
             if(params.relativeTo && typeof params.relativeTo === 'string') {
@@ -2386,6 +2436,15 @@ $axure.internal(function($ax) {
         };
         $ax.getEventInfoFromEvent = _getEventInfoFromEvent;
 
+        $ax.getBasicEventInfo = function() {
+            var eventInfo = {};
+            eventInfo.now = new Date();
+            eventInfo.window = _getWindowInfo();
+            eventInfo.cursor = { x: 0, y: 0};
+            return eventInfo;
+
+        };
+
         var _getWindowInfo = function() {
             var win = {};
             win.width = $(window).width();
@@ -2400,7 +2459,7 @@ $axure.internal(function($ax) {
         $ax.cacheRepeaterInfo = function(repeaterId, repeaterInfo) {
             repeaterInfoCache[repeaterId] = repeaterInfo;
         }
-        $ax.removeCachedRepeaterInfo = function (repeaterId) {
+        $ax.removeCachedRepeaterInfo = function(repeaterId) {
             repeaterInfoCache[repeaterId] = undefined;
         }
 
@@ -2433,7 +2492,7 @@ $axure.internal(function($ax) {
             var elementAxQuery = $ax('#' + elementId);
             var elementQuery = $jobj(elementId);
             var obj = $obj(elementId);
-            var widget = { valid: true, isWidget: true };
+            var widget = { valid: true, isWidget: true, obj: obj, elementQuery: elementQuery, isLayer: $ax.public.fn.IsLayer(obj.type) };
             widget.elementId = elementId;
             widget.name = widget.label = (elementQuery.data('label') ? elementQuery.data('label') : '');
             widget.text = $ax('#' + elementId).text();
@@ -2441,62 +2500,63 @@ $axure.internal(function($ax) {
             widget.rotation = $ax.move.getRotationDegree(widget.elementId);
             var scriptId = $ax.repeater.getScriptIdFromElementId(elementId);
             var repeaterId = $ax.getParentRepeaterFromScriptId(scriptId);
-            if (repeaterId) widget.repeater = $ax.public.fn.IsRepeater(obj.type) ? widget : _getWidgetInfo(repeaterId);
+            if(repeaterId) widget.repeater = $ax.public.fn.IsRepeater(obj.type) ? widget : _getWidgetInfo(repeaterId);
 
-            if($ax.public.fn.IsLayer(obj.type)) {
-                var boundingRect = $ax.public.fn.getWidgetBoundingRect(elementId);
-                widget.x = boundingRect.left;
-                widget.y = boundingRect.top;
-                widget.width = boundingRect.width;
-                widget.height = boundingRect.height;
-                if(elementQuery.length != 0) {
-                    widget.pagex = elementAxQuery.left();
-                    widget.pagey = elementAxQuery.top();
-                }
-            } else {
-                var elementExists = elementQuery.length > 0;
-                var x = elementExists ? elementAxQuery.locRelativeIgnoreLayer(false) : 0;
-                var y = elementExists ? elementAxQuery.locRelativeIgnoreLayer(true) : 0;
+            //if($ax.public.fn.IsLayer(obj.type)) {
+            //    var boundingRect = $ax.public.fn.getWidgetBoundingRect(elementId);
+            //    widget.x = boundingRect.left;
+            //    widget.y = boundingRect.top;
+            //    widget.width = boundingRect.width;
+            //    widget.height = boundingRect.height;
+            //    if(elementQuery.length != 0) {
+            //        widget.pagex = elementAxQuery.left();
+            //        widget.pagey = elementAxQuery.top();
+            //    }
+            //} else {
+            //    var elementExists = elementQuery.length > 0;
+            //    var x = elementExists ? elementAxQuery.locRelativeIgnoreLayer(false) : 0;
+            //    var y = elementExists ? elementAxQuery.locRelativeIgnoreLayer(true) : 0;
 
-                widget.x = x;
-                widget.y = y;
+            //    widget.x = x;
+            //    widget.y = y;
 
-                if(elementExists) {
-                    widget.pagex = elementAxQuery.left();
-                    widget.pagey = elementAxQuery.top();
-                    widget.width = elementAxQuery.width();
-                    widget.height = elementAxQuery.height();
-                }
+            //    if(elementExists) {
+            //        widget.pagex = elementAxQuery.left();
+            //        widget.pagey = elementAxQuery.top();
+            //        widget.width = elementAxQuery.width();
+            //        widget.height = elementAxQuery.height();
+            //    }
 
-                //if (obj.generateCompound) {
-                //    // assume this means that this is a compound vector.
-                //    widget.x = boundingRect.left;
-                //    widget.y = boundingRect.top;
+            //    //if (obj.generateCompound) {
+            //    //    // assume this means that this is a compound vector.
+            //    //    widget.x = boundingRect.left;
+            //    //    widget.y = boundingRect.top;
 
-                //    //widget.pagex += boundingRect.left;
-                //    //widget.pagey += boundingRect.top;
-                //}
+            //    //    //widget.pagex += boundingRect.left;
+            //    //    //widget.pagey += boundingRect.top;
+            //    //}
 
-            }
+            //}
 
 
             // Right now only dynamic panel can scroll
-            if ($ax.public.fn.IsDynamicPanel(obj.type)) {
+            if($ax.public.fn.IsDynamicPanel(obj.type)) {
                 var stateQuery = $('#' + $ax.visibility.GetPanelState(elementId));
                 widget.scrollx = stateQuery.scrollLeft();
                 widget.scrolly = stateQuery.scrollTop();
+                widget.stateQuery = stateQuery;
 
-                if($ax.dynamicPanelManager.isIdFitToContent(elementId)) {
-                    widget.width = stateQuery.width();
-                    widget.height = stateQuery.height();
-                }
+                //if($ax.dynamicPanelManager.isIdFitToContent(elementId)) {
+                //    widget.width = stateQuery.width();
+                //    widget.height = stateQuery.height();
+                //}
             } else {
                 widget.scrollx = 0;
                 widget.scrolly = 0;
             }
 
             // repeater only props
-            if ($ax.public.fn.IsRepeater(obj.type)) {
+            if($ax.public.fn.IsRepeater(obj.type)) {
                 widget.visibleitemcount = repeaterIdToItemIds[scriptId] ? repeaterIdToItemIds[scriptId].length : $ax.repeater.getVisibleDataCount(scriptId);
                 widget.itemcount = $ax.repeater.getFilteredDataCount(scriptId);
                 widget.datacount = $ax.repeater.getDataCount(scriptId);
@@ -2504,22 +2564,175 @@ $axure.internal(function($ax) {
                 widget.pageindex = $ax.repeater.getPageIndex(scriptId);
             }
 
-            widget.left = widget.leftfixed = widget.x;
-            widget.top = widget.topfixed = widget.y;
-            widget.right = widget.rightfixed = widget.x + widget.width;
-            widget.bottom = widget.bottomfixed = widget.y + widget.height;
+            //widget.left = widget.leftfixed = widget.x;
+            //widget.top = widget.topfixed = widget.y;
+            //widget.right = widget.rightfixed = widget.x + widget.width;
+            //widget.bottom = widget.bottomfixed = widget.y + widget.height;
 
-            if(elementQuery.css('position') == 'fixed') {
-                var windowScrollLeft = $(window).scrollLeft();
-                var windowScrollTop = $(window).scrollTop();
-                widget.leftfixed = widget.left - windowScrollLeft;
-                widget.topfixed = widget.top - windowScrollTop;
-                widget.rightfixed = widget.right - windowScrollLeft;
-                widget.bottomfixed = widget.bottom - windowScrollTop;
+            //if(elementQuery.css('position') == 'fixed') {
+            //    var windowScrollLeft = $(window).scrollLeft();
+            //    var windowScrollTop = $(window).scrollTop();
+            //    widget.leftfixed = widget.left - windowScrollLeft;
+            //    widget.topfixed = widget.top - windowScrollTop;
+            //    widget.rightfixed = widget.right - windowScrollLeft;
+            //    widget.bottomfixed = widget.bottom - windowScrollTop;
+            //}
+
+            // Get widget info funcs
+            widget.elementAxQuery = function () {
+                return this.elementAxQueryProp || (this.elementAxQueryProp = $ax('#' + this.elementId));
             }
+
+            widget.isFitToContent = function () {
+                if (this.isFitToContentProp === undefined) {
+                    if (!this.stateQuery) this.isFitToContentProp = false;
+                    else this.isFitToContentProp = $ax.dynamicPanelManager.isIdFitToContent(this.elementId);
+                }
+                return this.isFitToContentProp;
+            }
+
+            widget.x = function () { return this.getProp('x'); }
+            widget.y = function () { return this.getProp('y'); }
+            widget.pagex = function () { return this.getProp('pagex'); }
+            widget.pagey = function () { return this.getProp('pagey'); }
+            widget.width = function () { return this.getProp('width'); }
+            widget.height = function () { return this.getProp('height'); }
+            widget.left = function () { return this.x(); }
+            widget.top = function () { return this.y(); }
+            widget.right = function () { return this.x() + this.width(); }
+            widget.bottom = function () { return this.y() + this.height(); }
+
+            widget.getProp = function (prop) {
+                var propName = prop + 'Prop';
+                if (typeof (this[propName]) != 'undefined') return this[propName];
+                return this[propName] = this.cacheProp(prop);
+            };
+
+            widget.cacheProp = function (prop) {
+                // I'm keeping the returned undefineds the same as before, but really I could probably return undefined right away if elementQuery is empty
+                if (this.isLayer) {
+                    if (prop == 'pagex' || prop == 'pagey') {
+                        if (this.elementQuery.length > 0) {
+                            if (prop == 'pagex') return this.elementAxQuery().left();
+                            else return this.elementAxQuery().top();
+                        }
+                        return undefined; // Otherwise, it is undefined as there is no element
+                    }
+                    var boundingRect = $ax.public.fn.getWidgetBoundingRect(this.elementId);
+                    this.xProp = boundingRect.left;
+                    this.yProp = boundingRect.top;
+                    this.widthProp = boundingRect.width;
+                    this.heightProp = boundingRect.height;
+                    return this[prop + 'Prop'];
+                }
+
+                if (this.elementQuery.length <= 0) return prop == 'x' || prop == 'y' ? 0 : undefined;
+
+                switch (prop) {
+                    case 'x': return this.elementAxQuery().locRelativeIgnoreLayer(false);
+                    case 'y': return this.elementAxQuery().locRelativeIgnoreLayer(true);
+                    case 'pagex': return this.elementAxQuery().left();
+                    case 'pagey': return this.elementAxQuery().top();
+                }
+
+                var val = this.elementAxQuery()[prop]();
+                if (this.isFitToContent()) val = this.stateQuery[prop]();
+
+                return val;
+            };
+
+            widget.leftfixed = function() { this.getFixed('left'); }
+            widget.topfixed = function() { this.getFixed('top'); }
+            widget.rightfixed = function() { this.getFixed('right'); }
+            widget.bottomfixed = function() { this.getFixed('bottom'); }
+
+            widget.isFixed = function() {
+                if(this.isFixedProp === undefined) this.isFixedProp = this.elementQuery.css('position') == 'fixed)';
+                return this.isFixedProp;
+            }
+
+            widget.getFixed = function (prop) {
+                var fixed = prop + 'fixedProp';
+                if(!this.isFixed()) widget[fixed] = widget[prop]();
+                if(widget[fixed] === undefined) {
+
+                    if(prop == 'left' || prop == 'right') {
+                        if(this.windowScrollX === undefined) this.windowScrollX = $(window).scrollLeft();
+                        var windowScroll = this.windowScrollX;
+                    } else {
+                        if(this.windowScrollY === undefined) this.windowScrollY = $(window).scrollTop();
+                        windowScroll = this.windowScrollY;
+                    }
+                    widget[fixed] = widget[prop]() - windowScroll;
+                }
+                return widget[fixed];
+            }
+
             return widget;
         };
         $ax.getWidgetInfo = _getWidgetInfo;
+
+        $ax.GetTextPanelId = function (id, create) {
+            if(!$ax('#' + id).SupportsRichText()) return '';
+            var buttonShape = $ax.GetButtonShape(id);
+            var panelDiv = buttonShape.find('.text')[0];
+            if(!panelDiv) {
+                if(!create) return "";
+
+                var newId = id + "_text";
+                //var newDiv = $('<div id="' + newId + '" class="text" style="visibility: inherit; position: absolute"></div>');
+                var newDiv = $('<div id="' + newId + '" class="text" style="visibility: inherit; position: absolute"><p><span></span></p></div>');
+                buttonShape.append(newDiv);
+
+                var adaptiveId = $ax.adaptive.currentViewId;
+                if(adaptiveId) $ax.style.setAdaptiveStyle(id, $ax.style.computeAllOverrides(id, undefined, $ax.style.generateState(id), adaptiveId));
+
+                panelDiv = newDiv[0];
+            }
+
+            return panelDiv.id;
+        }
+
+        $ax.GetParentIdFromLink = function(id) {
+            return $ax.GetShapeIdFromText($jobj(id).parentsUntil('.text').parent().attr('id'));
+        };
+
+        $ax.GetButtonShapeId = function(id) {
+            var obj = $obj(id);
+            switch(obj.type) {
+            case $ax.constants.TREE_NODE_OBJECT_TYPE:
+                return obj.buttonShapeId ? $ax.getElementIdFromPath([obj.buttonShapeId], { relativeTo: id }) : "";
+            case $ax.constants.LINK_TYPE:
+                return "";
+            default:
+                return id;
+            }
+        };
+
+        $ax.GetButtonShape = function(id) {
+            return $jobj($ax.GetButtonShapeId(id));
+        };
+
+        $ax.GetShapeIdFromText = function(id) {
+            if(!id) return undefined; // this is to prevent an infinite loop.
+
+            var current = document.getElementById(id);
+            if(!current) return undefined;
+            current = current.parentElement;
+            while(current && current.tagName != 'BODY') {
+                var currentId = current.id;
+                if(currentId && currentId != 'base') return $ax.visibility.getWidgetFromContainer(currentId);
+                current = current.parentElement;
+            }
+
+            return undefined;
+        };
+
+        $ax.GetImageIdFromShape = function(id) {
+            var image = $ax.GetButtonShape(id).find('img[id$=img]');
+            if(!image.length) image = $jobj(id).find('img[id$=image_sketch]');
+            return image.attr('id');
+        };
 
         var _getParentElement = $ax.getParentElement = function(elementId) {
             var obj = $obj(elementId);
